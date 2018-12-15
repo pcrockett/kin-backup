@@ -1,19 +1,12 @@
-mod cmdline;
+mod lib;
 
-fn main() -> cmdline::CliResult {
+fn main() -> lib::cmdline::CliResult {
 
-    let args = cmdline::parse();
-    let message = match args {
-        cmdline::CliArgs::Init { directory } => {
-            match directory {
-                Some(dir) => String::from(dir.to_str().unwrap()),
-                None => String::from("No directory specified.")
-            }
-        },
+    let args = lib::cmdline::parse();
+    match args {
+        lib::cmdline::CliArgs::Init(args) => lib::init::run(args),
+        lib::cmdline::CliArgs::Compile(_) => Err(failure::err_msg("Not implemented yet"))
+    }?;
 
-        cmdline::CliArgs::Compile { dest_dir } => String::from(dest_dir.to_str().unwrap())
-    };
-
-    println!("{}", message);
     Ok(())
 }
