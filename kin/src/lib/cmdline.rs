@@ -3,7 +3,17 @@ pub use quicli::prelude::*;
 
 #[derive(StructOpt)]
 #[structopt(name = "kin", about = "Easy, secure backups for your next of kin")]
-pub enum CliArgs {
+struct CliArgs {
+
+    #[structopt(subcommand)]
+    pub cmd: SubCommand,
+
+    #[structopt(flatten)]
+    verbosity: Verbosity
+}
+
+#[derive(StructOpt)]
+pub enum SubCommand {
 
     /// Start a backup project
     #[structopt(name = "init")]
@@ -29,8 +39,12 @@ pub struct CompileArgs {
     dest_dir: std::path::PathBuf
 }
 
-pub fn parse() -> CliArgs {
-    CliArgs::from_args()
+pub fn parse() -> SubCommand {
+    let args = CliArgs::from_args();
+    args.verbosity.setup_env_logger("kin")
+        .expect("unable to setup env logger");
+
+    args.cmd
 }
 
 #[cfg(test)]
@@ -43,8 +57,8 @@ mod tests {
         let args = [ "kin", "init" ].iter();
 
         let parsed = CliArgs::from_iter(args);
-        let init_args = match parsed {
-            CliArgs::Init(args) => args,
+        let init_args = match parsed.cmd {
+            SubCommand::Init(args) => args,
             _ => panic!("not an init subcommand")
         };
 
@@ -57,8 +71,8 @@ mod tests {
         let args = [ "kin", "init", "foo/bar" ].iter();
 
         let parsed = CliArgs::from_iter(args);
-        let init_args = match parsed {
-            CliArgs::Init(args) => args,
+        let init_args = match parsed.cmd {
+            SubCommand::Init(args) => args,
             _ => panic!("not an init subcommand")
         };
 
