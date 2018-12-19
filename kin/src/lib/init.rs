@@ -6,10 +6,21 @@ use std::path::Path;
 
 pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
 
-    match args.directory {
-        Some(dir) => ensure_dir(&dir)?,
-        None => return Err(failure::err_msg("TODO: Figure out current directory"))
-    }
+    let project_dir = match args.directory {
+        Some(dir) => {
+
+            let result = ensure_dir(&dir);
+
+            if result.is_ok() {
+                Ok(dir)
+            } else {
+                Err(result.unwrap_err())
+            }
+        },
+        None => std::env::current_dir()
+    }?;
+
+    info!("{}", project_dir.to_str().unwrap());
 
     Ok(())
 }
