@@ -18,3 +18,8 @@ Each backup package contains an unencrypted folder of public documents, for thin
 Of course giving any one person such sensitive "keys to the kingdom" is arguably a bad idea. Which is why Kin prevents any one individual from being able to decrypt the backup that they have access to. Kin is designed so that you give backups to at least 2 people. Each person cannot decrypt their own backup, but they can decrypt a backup that someone else holds. This isn't just to protect you from one family member going rogue, but also protects you when your trusted backup-holders experience burglary or otherwise lose track of your backups.
 
 Kin also helps generate a clear, concise, non-technical readme for your relatives. It will tell them what they need to know to decrypt the backup (i.e. "You need a password from Bob or Sarah to get access to the sensitive information on this flash drive"). And it provides an executable for Windows, Mac OS, or Linux that can simply be double-clicked and walk the user through decrypting the backup.
+
+Build Requirements
+------------------
+
+Since we're using [sodiumoxide](https://github.com/sodiumoxide/sodiumoxide), to build this project you'll also need a C compiler (`cc`, `clang`, etc) and `libssl-dev` (assuming you're on Ubuntu).
