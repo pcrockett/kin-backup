@@ -1,10 +1,17 @@
 use super::cmdline;
 use failure::{ bail };
 use log::{ info };
+use sodiumoxide::crypto::stream;
 use std::fs;
 use std::io;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+
+#[derive(Serialize, Deserialize)]
+struct KinSettings<'a> {
+    master_key: &'a str
+}
 
 pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
 
@@ -25,6 +32,20 @@ pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
     for subdir in subdirs {
         ensure_dir(&subdir)?;
     }
+
+    let file = fs::File::create(project_dir.join(".kin/config.json"))?;
+    let mut file = io::BufWriter::new(file);
+    let key = stream::gen_key();
+    let key_base64 = &base64::encode(&key[..]);
+
+    let config = KinSettings {
+        master_key: key_base64
+    };
+
+    let config_serialized = serde_json::to_string_pretty(&config)?;
+
+    file.write(config_serialized.as_bytes())?;
+    file.flush()?;
 
     Ok(())
 }
