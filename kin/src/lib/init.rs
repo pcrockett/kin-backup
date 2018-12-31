@@ -9,13 +9,20 @@ use std::path::Path;
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
+struct KinRecipient<'a> {
+    name: &'a str,
+    password: &'a str
+}
+
+#[derive(Serialize, Deserialize)]
 struct KinSettings<'a> {
-    master_key: &'a str
+    master_key: &'a str,
+    recipients: Vec<KinRecipient<'a>>
 }
 
 pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
 
-    let project_dir = get_project_dir(args)?;
+    let project_dir = get_project_dir(args.directory)?;
     let is_not_empty = fs::read_dir(&project_dir)?.any(|_| true);
 
     if is_not_empty {
@@ -38,8 +45,14 @@ pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
     let key = stream::gen_key();
     let key_base64 = &base64::encode(&key[..]);
 
+    let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
+        name: r,
+        password: "not implemented yet"
+    }).collect();
+
     let config = KinSettings {
-        master_key: key_base64
+        master_key: key_base64,
+        recipients: recipients
     };
 
     let config_serialized = serde_json::to_string_pretty(&config)?;
@@ -50,23 +63,15 @@ pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn get_project_dir(args: cmdline::InitArgs) -> Result<PathBuf, failure::Error> {
+fn get_project_dir(path: Option<PathBuf>) -> Result<PathBuf, failure::Error> {
 
-    let project_dir = match args.directory {
-        Some(dir) => {
-
-            let result = ensure_dir(&dir);
-
-            if result.is_ok() {
-                Ok(dir)
-            } else {
-                Err(result.unwrap_err())
-            }
-        },
-        None => std::env::current_dir()
-    }?;
-
-    Ok(project_dir)
+    if path.is_some() {
+        let dir = path.unwrap();
+        ensure_dir(&dir)?;
+        return Ok(dir);
+    } else {
+        return Ok(std::env::current_dir()?);
+    }
 }
 
 fn ensure_dir(path: &Path) -> io::Result<()> {

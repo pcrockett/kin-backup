@@ -28,7 +28,11 @@ pub enum SubCommand {
 pub struct InitArgs {
     /// The directory where you will assemble the things you need to back up
     #[structopt(parse(from_os_str))]
-    pub directory: Option<std::path::PathBuf>
+    pub directory: Option<std::path::PathBuf>,
+
+    /// Specify to whom you plan to give your backups
+    #[structopt(short = "r", long = "recipients")]
+    pub recipients: Vec<String>
 }
 
 #[derive(StructOpt)]
@@ -80,5 +84,23 @@ mod tests {
             Some(path) => assert_eq!("foo/bar", path.to_str().unwrap()),
             None => panic!("no directory specified")
         };
+    }
+
+    #[test]
+    fn init_with_recipients() {
+
+        let args = [
+            "kin", "init", "--recipients", "foo@bar.com", "hi@bye.com"
+        ].iter();
+
+        let parsed = CliArgs::from_iter(args);
+        let init_args = match parsed.cmd {
+            SubCommand::Init(args) => args,
+            _ => panic!("not an init subcommand")
+        };
+
+        assert_eq!(init_args.recipients.len(), 2);
+        assert_eq!(init_args.recipients[0], "foo@bar.com");
+        assert_eq!(init_args.recipients[1], "hi@bye.com");
     }
 }
