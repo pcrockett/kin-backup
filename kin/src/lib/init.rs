@@ -96,3 +96,23 @@ fn ensure_dir(path: &Path) -> io::Result<()> {
     info!("created {}", path.to_str().unwrap());
     Ok(())
 }
+
+fn get_words() -> Vec<&'static str> {
+
+    let raw_file = include_str!("eff_large_wordlist.txt");
+
+    raw_file.split_whitespace()
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn word_list() {
+        let words = super::get_words();
+
+        assert_eq!(words[0], "abacus");
+        assert_eq!(words[words.len() - 1], "zoom");
+    }
+}
