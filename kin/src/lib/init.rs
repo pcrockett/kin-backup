@@ -97,7 +97,7 @@ fn ensure_dir(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn random_password<'a>() -> String {
+fn random_password() -> String {
     let word_list = get_words();
     random_password_from(word_list)
 }
@@ -134,6 +134,9 @@ fn random_int() -> u32 {
 
 fn get_words() -> Vec<&'static str> {
 
+    // Got this word list from:
+    // https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
+
     let raw_file = include_str!("eff_large_wordlist.txt");
 
     raw_file.split_whitespace()
@@ -149,6 +152,8 @@ mod tests {
 
         assert_eq!(words[0], "abacus");
         assert_eq!(words[words.len() - 1], "zoom");
+
+        assert!(words.len() >= 7776, "Number of words has decreased. Either use a larger word list or consider increasing the number of words in passwords to maintain a high entropy.");
     }
 
     #[test]
