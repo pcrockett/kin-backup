@@ -9,15 +9,15 @@ use std::path::Path;
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
-struct KinRecipient<'a> {
-    name: &'a str,
-    password: &'a str
+struct KinRecipient {
+    name: String,
+    password: String
 }
 
 #[derive(Serialize, Deserialize)]
-struct KinSettings<'a> {
-    master_key: &'a str,
-    recipients: Vec<KinRecipient<'a>>
+struct KinSettings {
+    master_key: String,
+    recipients: Vec<KinRecipient>
 }
 
 pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
@@ -46,12 +46,12 @@ pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
     let key_base64 = &base64::encode(&key[..]);
 
     let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
-        name: r,
-        password: "not implemented yet"
+        name: r.to_owned(),
+        password: random_password()
     }).collect();
 
     let config = KinSettings {
-        master_key: key_base64,
+        master_key: key_base64.to_owned(),
         recipients: recipients
     };
 
@@ -97,6 +97,41 @@ fn ensure_dir(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
+fn random_password<'a>() -> String {
+    let word_list = get_words();
+    random_password_from(word_list)
+}
+
+fn random_password_from(word_list: Vec<&str>) -> String {
+
+    let mut password = String::new();
+    (0..6).map(|_| random_int() as usize)
+        .map(|r| r % word_list.len())
+        .map(|i| word_list[i])
+        .for_each(|word| {
+            password.push_str(word);
+            password.push(' ');
+        });
+
+    // Remove extra last space
+    password.pop();
+
+    let password = password; // Get immutable value for returning
+    password
+}
+
+fn random_int() -> u32 {
+
+    let buffer: &mut [u8; std::mem::size_of::<u32>()] = &mut [0; std::mem::size_of::<u32>()];
+    sodiumoxide::randombytes::randombytes_into(buffer);
+
+    let buffer = *buffer; // Get immutable array
+
+    unsafe {
+        std::mem::transmute::<[u8; 4], u32>(buffer)
+    }
+}
+
 fn get_words() -> Vec<&'static str> {
 
     let raw_file = include_str!("eff_large_wordlist.txt");
@@ -114,5 +149,13 @@ mod tests {
 
         assert_eq!(words[0], "abacus");
         assert_eq!(words[words.len() - 1], "zoom");
+    }
+
+    #[test]
+    fn random_password_single_word() {
+        let words = vec!("foo");
+        let password = super::random_password_from(words);
+
+        assert_eq!(password, "foo foo foo foo foo foo");
     }
 }
