@@ -1,10 +1,10 @@
 use super::cmdline;
 use super::fsutil;
+use super::kinproject::KinProject;
 use sodiumoxide::crypto::stream;
 use std::fs;
 use std::io;
 use std::io::Write;
-use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
 struct KinRecipient {
@@ -20,20 +20,20 @@ struct KinSettings {
 
 pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
 
-    let project_dir = get_project_dir(args.directory)?;
+    let project = KinProject::init(args.directory)?;
 
     let subdirs = [
             "public",
             "secret",
             ".kin"
         ].iter()
-        .map(|x| project_dir.join(x));
+        .map(|x| project.path().join(x));
 
     for subdir in subdirs {
         fsutil::ensure_empty_dir(&subdir)?;
     }
 
-    let file = fs::File::create(project_dir.join(".kin/config.json"))?;
+    let file = fs::File::create(project.path().join(".kin/config.json"))?;
     let mut file = io::BufWriter::new(file);
     let key = stream::gen_key();
     let key_base64 = &base64::encode(&key[..]);
@@ -54,17 +54,6 @@ pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
     file.flush()?;
 
     Ok(())
-}
-
-fn get_project_dir(path: Option<PathBuf>) -> Result<PathBuf, failure::Error> {
-
-    if path.is_some() {
-        let dir = path.unwrap();
-        fsutil::ensure_empty_dir(&dir)?;
-        return Ok(dir);
-    } else {
-        return Ok(std::env::current_dir()?);
-    }
 }
 
 fn random_password() -> String {

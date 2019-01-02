@@ -39,7 +39,11 @@ pub struct InitArgs {
 pub struct CompileArgs {
     /// The destination directory where you want to generate the backup
     #[structopt(name = "destination", parse(from_os_str))]
-    pub dest_dir: std::path::PathBuf
+    pub dest_dir: std::path::PathBuf,
+
+    /// The project directory
+    #[structopt(short = "p", long = "project-dir", parse(from_os_str))]
+    pub project_dir: Option<std::path::PathBuf>
 }
 
 pub fn parse() -> SubCommand {
@@ -118,5 +122,25 @@ mod tests {
 
         let destination = compile_args.dest_dir.to_str().unwrap();
         assert_eq!(destination, "~/temp");
+    }
+
+    #[test]
+    fn compile_with_proj_dir() {
+        let args = [
+            "kin", "compile", "~/temp", "--project-dir", "~/foo/bar"
+        ].iter();
+
+        let parsed = CliArgs::from_iter(args);
+        let compile_args = match parsed.cmd {
+            SubCommand::Compile(args) => args,
+            _ => panic!("not a compile subcommand")
+        };
+
+        let proj_dir = match compile_args.project_dir {
+            Some(dir) => dir,
+            _ => panic!("no project dir specified")
+        };
+
+        assert_eq!(proj_dir.to_str().unwrap(), "~/foo/bar");
     }
 }
