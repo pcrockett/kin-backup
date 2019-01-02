@@ -25,31 +25,49 @@ impl KinProject {
 
     pub fn init(path: Option<PathBuf>) -> Result<KinProject, failure::Error> {
 
+        let dir: PathBuf;
+
         if path.is_some() {
 
-            let dir = path.unwrap();
+            dir = path.unwrap();
             fsutil::ensure_empty_dir(&dir)?;
-
-            return Ok(
-                KinProject {
-                    path: dir
-                }
-            );
 
         } else {
 
-            let dir = std::env::current_dir()?;
+            dir = std::env::current_dir()?;
             fsutil::ensure_empty_dir(&dir)?;
-
-            return Ok(
-                KinProject {
-                    path: dir
-                }
-            );
         }
+
+        let project = KinProject {
+            path: dir
+        };
+
+        let subdirs = [
+            project.public_dir(),
+            project.private_dir(),
+            project.config_dir()
+        ];
+
+        for subdir in subdirs.iter() {
+            fsutil::ensure_empty_dir(&subdir)?;
+        }
+
+        Ok(project)
     }
 
-    pub fn path(self: &KinProject) -> &PathBuf {
+    pub fn path(&self) -> &PathBuf {
         &self.path
+    }
+
+    pub fn public_dir(&self) -> PathBuf {
+        self.path.join("public")
+    }
+
+    pub fn private_dir(&self) -> PathBuf {
+        self.path.join("private")
+    }
+
+    pub fn config_dir(&self) -> PathBuf {
+        self.path.join(".kin")
     }
 }

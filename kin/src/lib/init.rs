@@ -1,5 +1,4 @@
 use super::cmdline;
-use super::fsutil;
 use super::kinproject::KinProject;
 use sodiumoxide::crypto::stream;
 use std::fs;
@@ -22,18 +21,7 @@ pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
 
     let project = KinProject::init(args.directory)?;
 
-    let subdirs = [
-            "public",
-            "secret",
-            ".kin"
-        ].iter()
-        .map(|x| project.path().join(x));
-
-    for subdir in subdirs {
-        fsutil::ensure_empty_dir(&subdir)?;
-    }
-
-    let file = fs::File::create(project.path().join(".kin/config.json"))?;
+    let file = fs::File::create(project.config_dir().join("config.json"))?;
     let mut file = io::BufWriter::new(file);
     let key = stream::gen_key();
     let key_base64 = &base64::encode(&key[..]);
