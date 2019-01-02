@@ -9,7 +9,7 @@ fn main() -> lib::cmdline::CliResult {
 
     match args {
         lib::cmdline::SubCommand::Init(args) => lib::init::run(args),
-        lib::cmdline::SubCommand::Compile(_) => Err(failure::err_msg("Not implemented yet"))
+        lib::cmdline::SubCommand::Compile(args) => lib::compile::run(args)
     }?;
 
     Ok(())
