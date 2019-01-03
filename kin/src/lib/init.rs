@@ -1,28 +1,15 @@
-use super::cmdline;
+use super::cmdline::InitArgs;
 use super::kinproject::KinProject;
+use super::kinsettings::{ KinSettings, KinRecipient };
 use sodiumoxide::crypto::stream;
-use std::fs;
-use std::io;
-use std::io::Write;
 
-#[derive(Serialize, Deserialize)]
-struct KinRecipient {
-    name: String,
-    password: String
-}
+pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
-#[derive(Serialize, Deserialize)]
-struct KinSettings {
-    master_key: String,
-    recipients: Vec<KinRecipient>
-}
+    let project = match &args.directory {
+        Some(dir) => KinProject::init(&dir)?,
+        None => KinProject::init(&std::env::current_dir()?)?
+    };
 
-pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
-
-    let project = KinProject::init(args.directory)?;
-
-    let file = fs::File::create(project.config_dir().join("config.json"))?;
-    let mut file = io::BufWriter::new(file);
     let key = stream::gen_key();
     let key_base64 = &base64::encode(&key[..]);
 
@@ -36,10 +23,7 @@ pub fn run(args: cmdline::InitArgs) -> Result<(), failure::Error> {
         recipients: recipients
     };
 
-    let config_serialized = serde_json::to_string_pretty(&config)?;
-
-    file.write(config_serialized.as_bytes())?;
-    file.flush()?;
+    config.write(&project.config_file())?;
 
     Ok(())
 }

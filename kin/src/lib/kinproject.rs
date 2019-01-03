@@ -7,39 +7,19 @@ pub struct KinProject {
 
 impl KinProject {
 
-    pub fn from(path: Option<PathBuf>) -> KinProject {
+    pub fn from(path: &PathBuf) -> KinProject {
 
-        if path.is_some() {
-
-            return KinProject {
-                path: path.unwrap()
-            };
-
-        } else {
-
-            return KinProject {
-                path: std::env::current_dir().unwrap()
-            };
+        KinProject {
+            path: path.to_owned()
         }
     }
 
-    pub fn init(path: Option<PathBuf>) -> Result<KinProject, failure::Error> {
+    pub fn init(path: &PathBuf) -> Result<KinProject, failure::Error> {
 
-        let dir: PathBuf;
-
-        if path.is_some() {
-
-            dir = path.unwrap();
-            fsutil::ensure_empty_dir(&dir)?;
-
-        } else {
-
-            dir = std::env::current_dir()?;
-            fsutil::ensure_empty_dir(&dir)?;
-        }
+        fsutil::ensure_empty_dir(path)?;
 
         let project = KinProject {
-            path: dir
+            path: path.to_owned()
         };
 
         let subdirs = [
@@ -65,5 +45,9 @@ impl KinProject {
 
     pub fn config_dir(&self) -> PathBuf {
         self.path.join(".kin")
+    }
+
+    pub fn config_file(&self) -> PathBuf {
+        self.config_dir().join("config.json")
     }
 }

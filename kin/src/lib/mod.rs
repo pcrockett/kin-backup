@@ -3,3 +3,4 @@ pub mod init;
 pub mod compile;
 mod fsutil;
 mod kinproject;
+mod kinsettings;
