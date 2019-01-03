@@ -41,6 +41,10 @@ pub struct CompileArgs {
     #[structopt(name = "destination", parse(from_os_str))]
     pub dest_dir: std::path::PathBuf,
 
+    /// The recipient for whom you're compiling your backup
+    #[structopt(short = "r", long = "recipient")]
+    pub recipient: String,
+
     /// The project directory
     #[structopt(short = "p", long = "project-dir", parse(from_os_str))]
     pub project_dir: Option<std::path::PathBuf>
@@ -111,7 +115,7 @@ mod tests {
     fn compile_with_destination() {
 
         let args = [
-            "kin", "compile", "~/temp"
+            "kin", "compile", "~/temp", "--recipient", "foo@bar.baz"
         ].iter();
 
         let parsed = CliArgs::from_iter(args);
@@ -127,7 +131,9 @@ mod tests {
     #[test]
     fn compile_with_proj_dir() {
         let args = [
-            "kin", "compile", "~/temp", "--project-dir", "~/foo/bar"
+            "kin", "compile", "~/temp",
+            "--recipient", "foo@bar.baz",
+            "--project-dir", "~/foo/bar"
         ].iter();
 
         let parsed = CliArgs::from_iter(args);
