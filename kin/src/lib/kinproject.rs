@@ -55,10 +55,6 @@ impl KinProject {
         Ok(project)
     }
 
-    pub fn path(&self) -> &PathBuf {
-        &self.path
-    }
-
     pub fn public_dir(&self) -> PathBuf {
         self.path.join("public")
     }
