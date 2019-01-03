@@ -1,7 +1,7 @@
 use super::cmdline::InitArgs;
 use super::kinproject::KinProject;
 use super::kinsettings::{ KinSettings, KinRecipient };
-use sodiumoxide::crypto::stream;
+use sodiumoxide::crypto::secretbox;
 
 pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
@@ -10,7 +10,7 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
         None => KinProject::init(&std::env::current_dir()?)?
     };
 
-    let key = stream::gen_key();
+    let key = secretbox::gen_key();
     let key_base64 = &base64::encode(&key[..]);
 
     let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
