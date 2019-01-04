@@ -2,6 +2,7 @@ use super::cmdline::InitArgs;
 use super::kinproject::KinProject;
 use super::kinsettings::{ KinSettings, KinRecipient };
 use super::libsodium;
+use super::libsodium::SymmetricKey;
 
 pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
@@ -10,16 +11,13 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
         None => KinProject::init(&std::env::current_dir()?)?
     };
 
-    let key = libsodium::generate_encryption_key();
-    let key_base64 = &base64::encode(&key[..]);
-
     let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
         name: r.to_owned(),
         password: random_password()
     }).collect();
 
     let config = KinSettings {
-        master_key: key_base64.to_owned(),
+        master_key: SymmetricKey::new().encode_base64(),
         recipients: recipients
     };
 

@@ -3,6 +3,7 @@ use super::fsutil;
 use super::kinproject::KinProject;
 use super::kinsettings::KinSettings;
 use super::libsodium;
+use super::libsodium::SymmetricKey;
 use log::{ info };
 use std::fs;
 use std::path::PathBuf;
@@ -28,20 +29,9 @@ fn copy_private_dir(project: &KinProject, args: &CompileArgs) -> Result<(), fail
     fsutil::ensure_empty_dir(&dest_private_dir)?;
 
     let config = KinSettings::read(&project.config_file())?;
-    let encryption_key = base64::decode(&config.master_key)?;
+    let encryption_key = SymmetricKey::decode_base64(&config.master_key)?;
 
-    if encryption_key.len() != libsodium::KEY_SIZE {
-        return Err(
-            failure::err_msg("invalid encryption key")
-        );
-    }
-
-    let mut key_array: [u8; libsodium::KEY_SIZE] = [0; libsodium::KEY_SIZE];
-    for index in 0..libsodium::KEY_SIZE {
-        key_array[index] = encryption_key[index];
-    }
-
-    copy_dir_encrypted(&project.private_dir(), &dest_private_dir, &key_array)?;
+    copy_dir_encrypted(&project.private_dir(), &dest_private_dir, &encryption_key)?;
 
     Ok(())
 }
@@ -83,7 +73,7 @@ fn copy_dir(source: &PathBuf, dest: &PathBuf) -> Result<(), failure::Error> {
 
 fn copy_dir_encrypted(source: &PathBuf,
     dest: &PathBuf,
-    encryption_key: &[u8; libsodium::KEY_SIZE]) -> Result<(), failure::Error> {
+    encryption_key: &SymmetricKey) -> Result<(), failure::Error> {
 
     let contents = fs::read_dir(source)?;
 

@@ -1,10 +1,11 @@
+use failure::{ format_err };
 use rust_sodium_sys;
 use std::ptr;
 
 // stream encryption docs:
 // https://download.libsodium.org/doc/secret-key_cryptography/secretstream
 
-pub const KEY_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_KEYBYTES as usize;
+const KEY_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_KEYBYTES as usize;
 const HEADER_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_HEADERBYTES as usize;
 const A_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_ABYTES as usize;
 
@@ -23,15 +24,49 @@ pub fn init() -> Result<(), failure::Error> {
     }
 }
 
-pub fn generate_encryption_key() -> [u8; KEY_SIZE] {
+pub struct SymmetricKey {
+    data: [u8; KEY_SIZE]
+}
 
-    let mut buf: [u8; KEY_SIZE] = [0; KEY_SIZE];
+impl SymmetricKey {
 
-    unsafe {
-        rust_sodium_sys::crypto_secretstream_xchacha20poly1305_keygen(buf.as_mut_ptr());
+    pub fn new() -> SymmetricKey {
+
+        let mut key = SymmetricKey {
+            data: [0; KEY_SIZE]
+        };
+
+        unsafe {
+            rust_sodium_sys::crypto_secretstream_xchacha20poly1305_keygen(key.data.as_mut_ptr());
+        }
+
+        key
     }
 
-    buf
+    pub fn decode_base64(base64_contents: &String) -> Result<SymmetricKey, failure::Error> {
+
+        let decoded = base64::decode(base64_contents)?;
+
+        if decoded.len() != KEY_SIZE {
+            return Err(
+                format_err!("base64 data is an invalid length (was {} bytes, should be {})", decoded.len(), KEY_SIZE)
+            );
+        }
+
+        let mut key = SymmetricKey {
+            data: [0; KEY_SIZE]
+        };
+
+        for index in 0..KEY_SIZE {
+            key.data[index] = decoded[index];
+        }
+
+        Ok(key)
+    }
+
+    pub fn encode_base64(&self) -> String {
+        base64::encode(&self.data)
+    }
 }
 
 pub fn randombytes_into(buf: &mut [u8]) {
@@ -40,7 +75,7 @@ pub fn randombytes_into(buf: &mut [u8]) {
     }
 }
 
-pub fn encrypt(plaintext: Vec<u8>, key: &[u8; KEY_SIZE]) -> Vec<u8> {
+pub fn encrypt(plaintext: Vec<u8>, key: &SymmetricKey) -> Vec<u8> {
 
     // Intentionally taking ownership of plaintext. We want to discourage the
     // user from using the plain text after encryption.
@@ -60,7 +95,7 @@ pub fn encrypt(plaintext: Vec<u8>, key: &[u8; KEY_SIZE]) -> Vec<u8> {
         rust_sodium_sys::crypto_secretstream_xchacha20poly1305_init_push(
             &mut state,
             header.as_mut_ptr(),
-            key.as_ptr()
+            key.data.as_ptr()
         );
 
         rust_sodium_sys::crypto_secretstream_xchacha20poly1305_push(
