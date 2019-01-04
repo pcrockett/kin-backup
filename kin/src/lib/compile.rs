@@ -2,16 +2,10 @@ use super::cmdline::CompileArgs;
 use super::fsutil;
 use super::kinproject::KinProject;
 use super::kinsettings::KinSettings;
+use super::libsodium;
 use log::{ info };
-use sodiumoxide::crypto::secretbox;
-use sodiumoxide::crypto::secretbox::xsalsa20poly1305::{ Key, Nonce};
 use std::fs;
 use std::path::PathBuf;
-
-struct NonceRecord {
-    file: String,
-    nonce: Nonce
-}
 
 pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
 
@@ -34,11 +28,20 @@ fn copy_private_dir(project: &KinProject, args: &CompileArgs) -> Result<(), fail
     fsutil::ensure_empty_dir(&dest_private_dir)?;
 
     let config = KinSettings::read(&project.config_file())?;
-    let key_bytes = base64::decode(&config.master_key)?;
-    let encryption_key = Key::from_slice(key_bytes.as_slice()).unwrap();
-    let mut nonces = Vec::new();
+    let encryption_key = base64::decode(&config.master_key)?;
 
-    copy_dir_encrypted(&project.private_dir(), &dest_private_dir, &encryption_key, &mut nonces)?;
+    if encryption_key.len() != libsodium::KEY_SIZE {
+        return Err(
+            failure::err_msg("invalid encryption key")
+        );
+    }
+
+    let mut key_array: [u8; libsodium::KEY_SIZE] = [0; libsodium::KEY_SIZE];
+    for index in 0..libsodium::KEY_SIZE {
+        key_array[index] = encryption_key[index];
+    }
+
+    copy_dir_encrypted(&project.private_dir(), &dest_private_dir, &key_array)?;
 
     Ok(())
 }
@@ -80,8 +83,7 @@ fn copy_dir(source: &PathBuf, dest: &PathBuf) -> Result<(), failure::Error> {
 
 fn copy_dir_encrypted(source: &PathBuf,
     dest: &PathBuf,
-    encryption_key: &Key,
-    nonces: &mut Vec<NonceRecord>) -> Result<(), failure::Error> {
+    encryption_key: &[u8; libsodium::KEY_SIZE]) -> Result<(), failure::Error> {
 
     let contents = fs::read_dir(source)?;
 
@@ -91,7 +93,7 @@ fn copy_dir_encrypted(source: &PathBuf,
         if item.metadata()?.is_dir() {
             let new_dest = dest.join(item.file_name());
             fs::create_dir(&new_dest)?;
-            copy_dir_encrypted(&item.path(), &new_dest, encryption_key, nonces)?;
+            copy_dir_encrypted(&item.path(), &new_dest, encryption_key)?;
         } else {
 
             let mut file_name = String::from(item.file_name().to_str().unwrap());
@@ -103,16 +105,10 @@ fn copy_dir_encrypted(source: &PathBuf,
                 item.path().to_str().unwrap(),
                 dest_path.to_str().unwrap());
 
-            let nonce = secretbox::gen_nonce();
             let plaintext = fs::read(item.path())?;
-            let encrypted = secretbox::seal(&plaintext, &nonce, &encryption_key);
+            let encrypted = libsodium::encrypt(plaintext, encryption_key);
 
             fs::write(dest_path, encrypted)?;
-
-            nonces.push(NonceRecord {
-                file: String::from(item.path().to_str().unwrap()),
-                nonce: nonce
-            });
         }
     }
 

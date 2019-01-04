@@ -1,7 +1,7 @@
 use super::cmdline::InitArgs;
 use super::kinproject::KinProject;
 use super::kinsettings::{ KinSettings, KinRecipient };
-use sodiumoxide::crypto::secretbox;
+use super::libsodium;
 
 pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
@@ -10,7 +10,7 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
         None => KinProject::init(&std::env::current_dir()?)?
     };
 
-    let key = secretbox::gen_key();
+    let key = libsodium::generate_encryption_key();
     let key_base64 = &base64::encode(&key[..]);
 
     let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
@@ -54,7 +54,7 @@ fn random_password_from(word_list: Vec<&str>) -> String {
 fn random_int() -> u32 {
 
     let buffer: &mut [u8; std::mem::size_of::<u32>()] = &mut [0; std::mem::size_of::<u32>()];
-    sodiumoxide::randombytes::randombytes_into(buffer);
+    libsodium::randombytes_into(buffer);
 
     let buffer = *buffer; // Get immutable array
 

@@ -22,4 +22,4 @@ Kin also helps generate a clear, concise, non-technical readme for your relative
 Build Requirements
 ------------------
 
-Since we're using [sodiumoxide](https://github.com/sodiumoxide/sodiumoxide), to build this project you'll also need a C compiler (`cc`, `clang`, etc) and `libssl-dev` (assuming you're on Ubuntu).
+Since we're using [libsodium](https://download.libsodium.org/doc/), to build this project you'll also need a C compiler (`cc`, `clang`, etc) and `libssl-dev` (assuming you're on Ubuntu).

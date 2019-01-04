@@ -5,7 +5,7 @@ fn main() -> lib::cmdline::CliResult {
 
     let args = lib::cmdline::parse();
 
-    sodiumoxide::init().expect("unable to initialize libsodium");
+    lib::libsodium::init()?;
 
     match args {
         lib::cmdline::SubCommand::Init(args) => lib::init::run(&args),
