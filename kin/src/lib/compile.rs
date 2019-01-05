@@ -2,10 +2,10 @@ use super::cmdline::CompileArgs;
 use super::fsutil;
 use super::kinproject::KinProject;
 use super::kinsettings::KinSettings;
-use super::libsodium;
-use super::libsodium::SymmetricKey;
+use super::libsodium::{ EncryptingWriter, SymmetricKey };
 use log::{ info };
 use std::fs;
+use std::fs::{ File, OpenOptions };
 use std::path::PathBuf;
 
 pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
@@ -78,27 +78,32 @@ fn copy_dir_encrypted(source: &PathBuf,
     let contents = fs::read_dir(source)?;
 
     for item in contents {
-        let item = item?;
+        let file = item?;
 
-        if item.metadata()?.is_dir() {
-            let new_dest = dest.join(item.file_name());
+        if file.metadata()?.is_dir() {
+            let new_dest = dest.join(file.file_name());
             fs::create_dir(&new_dest)?;
-            copy_dir_encrypted(&item.path(), &new_dest, encryption_key)?;
+            copy_dir_encrypted(&file.path(), &new_dest, encryption_key)?;
         } else {
 
-            let mut file_name = String::from(item.file_name().to_str().unwrap());
+            let mut file_name = String::from(file.file_name().to_str().unwrap());
             file_name.push_str(".kin");
 
             let dest_path = dest.join(file_name);
 
             info!("copying {} to {}...",
-                item.path().to_str().unwrap(),
+                file.path().to_str().unwrap(),
                 dest_path.to_str().unwrap());
 
-            let plaintext = fs::read(item.path())?;
-            let encrypted = libsodium::encrypt(plaintext, encryption_key);
+            let mut dest_file = OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(dest_path)?;
 
-            fs::write(dest_path, encrypted)?;
+            let mut reader = File::open(file.path())?;
+            let mut writer = EncryptingWriter::new(encryption_key, &mut dest_file)?;
+
+            writer.consume(&mut reader, file.metadata()?.len())?;
         }
     }
 
