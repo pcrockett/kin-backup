@@ -2,6 +2,7 @@ use super::cmdline::CompileArgs;
 use super::fsutil;
 use super::kinproject::KinProject;
 use super::kinsettings::KinSettings;
+use super::kinzip::KinZipWriter;
 use super::libsodium::{ EncryptingWriter, SymmetricKey };
 use log::{ info };
 use std::fs;
@@ -38,15 +39,17 @@ fn copy_private_dir(project: &KinProject, args: &CompileArgs) -> Result<(), fail
 
 fn copy_public_dir(project: &KinProject, dest_dir: &PathBuf) -> Result<(), failure::Error> {
 
-    let dest_public_dir = dest_dir.join("public");
-    fsutil::ensure_empty_dir(&dest_public_dir)?;
+    let dest_archive_path = dest_dir.join("public.zip");
+    let mut dest_archive = KinZipWriter::new(&dest_archive_path)?;
 
-    copy_dir(&project.public_dir(), &dest_public_dir)?;
+    copy_dir(&project.public_dir(), &mut dest_archive, &PathBuf::from("/"))?;
+
+    dest_archive.finish()?;
 
     Ok(())
 }
 
-fn copy_dir(source: &PathBuf, dest: &PathBuf) -> Result<(), failure::Error> {
+fn copy_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf) -> Result<(), failure::Error> {
 
     let contents = fs::read_dir(source)?;
 
@@ -54,17 +57,17 @@ fn copy_dir(source: &PathBuf, dest: &PathBuf) -> Result<(), failure::Error> {
         let item = item?;
 
         if item.metadata()?.is_dir() {
-            let new_dest = dest.join(item.file_name());
-            fs::create_dir(&new_dest)?;
-            copy_dir(&item.path(), &new_dest)?;
+            let dest_dir = dest_dir.join(item.file_name());
+            copy_dir(&item.path(), dest_archive, &dest_dir)?;
         } else {
-            let dest_path = dest.join(item.file_name());
+            let dest_path = dest_dir.join(item.file_name());
+            let dest_path = dest_path.to_str().unwrap();
 
-            info!("copying {} to {}...",
+            info!("zipping {} to {}...",
                 item.path().to_str().unwrap(),
-                dest_path.to_str().unwrap());
+                dest_path);
 
-            fs::copy(item.path(), dest_path)?;
+            dest_archive.add_file(&item.path(), String::from(dest_path))?;
         }
     }
 
