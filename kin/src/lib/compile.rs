@@ -24,32 +24,51 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn copy_private_dir(project: &KinProject, args: &CompileArgs) -> Result<(), failure::Error> {
-
-    let dest_private_dir = args.dest_dir.join("private");
-    fsutil::ensure_empty_dir(&dest_private_dir)?;
-
-    let config = KinSettings::read(&project.config_file())?;
-    let encryption_key = SymmetricKey::decode_base64(&config.master_key)?;
-
-    copy_dir_encrypted(&project.private_dir(), &dest_private_dir, &encryption_key)?;
-
-    Ok(())
-}
-
 fn copy_public_dir(project: &KinProject, dest_dir: &PathBuf) -> Result<(), failure::Error> {
 
     let dest_archive_path = dest_dir.join("public.zip");
     let mut dest_archive = KinZipWriter::new(&dest_archive_path)?;
 
-    copy_dir(&project.public_dir(), &mut dest_archive, &PathBuf::from("/"))?;
+    zip_dir(&project.public_dir(), &mut dest_archive, &PathBuf::from("/"))?;
 
     dest_archive.finish()?;
 
     Ok(())
 }
 
-fn copy_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf) -> Result<(), failure::Error> {
+fn copy_private_dir(project: &KinProject, args: &CompileArgs) -> Result<(), failure::Error> {
+
+    if project.temp_file().exists() {
+        fs::remove_file(project.temp_file())?;
+    }
+
+    let mut temp_archive = KinZipWriter::new(&project.temp_file())?;
+    zip_dir(&project.private_dir(), &mut temp_archive, &PathBuf::from("/"))?;
+    temp_archive.finish()?;
+
+    let config = KinSettings::read(&project.config_file())?;
+    let encryption_key = SymmetricKey::decode_base64(&config.master_key)?;
+
+    let dest_path = args.dest_dir.join("private.kin");
+    let mut dest_file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(dest_path)?;
+
+    {
+        let mut reader = File::open(&project.temp_file())?;
+        let mut writer = EncryptingWriter::new(&encryption_key, &mut dest_file)?;
+
+        let temp_archive_size = project.temp_file().metadata()?.len();
+        writer.consume(&mut reader, temp_archive_size)?;
+    }
+
+    fs::remove_file(project.temp_file())?;
+
+    Ok(())
+}
+
+fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf) -> Result<(), failure::Error> {
 
     let contents = fs::read_dir(source)?;
 
@@ -58,7 +77,7 @@ fn copy_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBu
 
         if item.metadata()?.is_dir() {
             let dest_dir = dest_dir.join(item.file_name());
-            copy_dir(&item.path(), dest_archive, &dest_dir)?;
+            zip_dir(&item.path(), dest_archive, &dest_dir)?;
         } else {
             let dest_path = dest_dir.join(item.file_name());
             let dest_path = dest_path.to_str().unwrap();
@@ -68,45 +87,6 @@ fn copy_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBu
                 dest_path);
 
             dest_archive.add_file(&item.path(), String::from(dest_path))?;
-        }
-    }
-
-    Ok(())
-}
-
-fn copy_dir_encrypted(source: &PathBuf,
-    dest: &PathBuf,
-    encryption_key: &SymmetricKey) -> Result<(), failure::Error> {
-
-    let contents = fs::read_dir(source)?;
-
-    for item in contents {
-        let file = item?;
-
-        if file.metadata()?.is_dir() {
-            let new_dest = dest.join(file.file_name());
-            fs::create_dir(&new_dest)?;
-            copy_dir_encrypted(&file.path(), &new_dest, encryption_key)?;
-        } else {
-
-            let mut file_name = String::from(file.file_name().to_str().unwrap());
-            file_name.push_str(".kin");
-
-            let dest_path = dest.join(file_name);
-
-            info!("copying {} to {}...",
-                file.path().to_str().unwrap(),
-                dest_path.to_str().unwrap());
-
-            let mut dest_file = OpenOptions::new()
-                .create_new(true)
-                .write(true)
-                .open(dest_path)?;
-
-            let mut reader = File::open(file.path())?;
-            let mut writer = EncryptingWriter::new(encryption_key, &mut dest_file)?;
-
-            writer.consume(&mut reader, file.metadata()?.len())?;
         }
     }
 

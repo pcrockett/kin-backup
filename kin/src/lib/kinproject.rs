@@ -50,4 +50,8 @@ impl KinProject {
     pub fn config_file(&self) -> PathBuf {
         self.config_dir().join("config.json")
     }
+
+    pub fn temp_file(&self) -> PathBuf {
+        self.config_dir().join("temp")
+    }
 }
