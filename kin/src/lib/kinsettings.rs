@@ -1,3 +1,4 @@
+use super::libsodium::MasterKey;
 use failure::{ bail };
 use std::fs::File;
 use std::io::{ BufWriter, Write };
@@ -12,11 +13,18 @@ pub struct KinRecipient {
 
 #[derive(Serialize, Deserialize)]
 pub struct KinSettings {
-    pub master_key: String,
+    master_key: String,
     pub recipients: Vec<KinRecipient>
 }
 
 impl KinSettings {
+
+    pub fn new(recipients: Vec<KinRecipient>) -> KinSettings {
+        KinSettings {
+            master_key: MasterKey::new().encode_base64(),
+            recipients: recipients
+        }
+    }
 
     pub fn write(&self, path: &PathBuf) -> Result<(), failure::Error> {
 
@@ -59,5 +67,9 @@ impl KinSettings {
             .collect();
 
         Ok(others)
+    }
+
+    pub fn master_key(&self) -> Result<MasterKey, failure::Error> {
+        MasterKey::decode_base64(&self.master_key)
     }
 }

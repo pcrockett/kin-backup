@@ -1,4 +1,4 @@
-use failure::{ format_err };
+use failure::{ bail, format_err };
 use rust_sodium_sys;
 use std::io;
 use std::io::{ Read, Write, ErrorKind };
@@ -7,9 +7,23 @@ use std::ptr;
 // stream encryption docs:
 // https://download.libsodium.org/doc/secret-key_cryptography/secretstream
 
-const KEY_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_KEYBYTES as usize;
-const HEADER_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_HEADERBYTES as usize;
+// authenticated encryption docs:
+// https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption
+
+// key derivation docs:
+// https://download.libsodium.org/doc/key_derivation
+
+// Constants for stream (file) encryption
+const MASTER_KEY_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_KEYBYTES as usize;
+const STREAM_HEADER_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_HEADERBYTES as usize;
 const A_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_ABYTES as usize;
+
+// Constants for encrypting smaller bits of data
+const SECRETBOX_KEY_SIZE: usize = rust_sodium_sys::crypto_secretbox_KEYBYTES as usize;
+const SECRETBOX_NONCE_SIZE: usize = rust_sodium_sys::crypto_secretbox_NONCEBYTES as usize;
+const SECRETBOX_MAC_SIZE: usize = rust_sodium_sys::crypto_secretbox_MACBYTES as usize;
+
+const PW_SALT_SIZE: usize = rust_sodium_sys::crypto_pwhash_SALTBYTES as usize;
 
 pub fn init() -> Result<(), failure::Error> {
 
@@ -26,16 +40,25 @@ pub fn init() -> Result<(), failure::Error> {
     }
 }
 
-pub struct SymmetricKey {
-    data: [u8; KEY_SIZE]
+pub struct MasterKey {
+    data: [u8; MASTER_KEY_SIZE]
 }
 
-impl SymmetricKey {
+pub struct PasswordSalt {
+    data: [u8; PW_SALT_SIZE]
+}
 
-    pub fn new() -> SymmetricKey {
+pub struct EncryptedMasterKey {
+    salt: PasswordSalt,
+    encrypted_data: Vec<u8>
+}
 
-        let mut key = SymmetricKey {
-            data: [0; KEY_SIZE]
+impl MasterKey {
+
+    pub fn new() -> MasterKey {
+
+        let mut key = MasterKey {
+            data: [0; MASTER_KEY_SIZE]
         };
 
         unsafe {
@@ -45,21 +68,21 @@ impl SymmetricKey {
         key
     }
 
-    pub fn decode_base64(base64_contents: &String) -> Result<SymmetricKey, failure::Error> {
+    pub fn decode_base64(base64_contents: &String) -> Result<MasterKey, failure::Error> {
 
         let decoded = base64::decode(base64_contents)?;
 
-        if decoded.len() != KEY_SIZE {
+        if decoded.len() != MASTER_KEY_SIZE {
             return Err(
-                format_err!("base64 data is an invalid length (was {} bytes, should be {})", decoded.len(), KEY_SIZE)
+                format_err!("base64 data is an invalid length (was {} bytes, should be {})", decoded.len(), MASTER_KEY_SIZE)
             );
         }
 
-        let mut key = SymmetricKey {
-            data: [0; KEY_SIZE]
+        let mut key = MasterKey {
+            data: [0; MASTER_KEY_SIZE]
         };
 
-        for index in 0..KEY_SIZE {
+        for index in 0..MASTER_KEY_SIZE {
             key.data[index] = decoded[index];
         }
 
@@ -71,6 +94,16 @@ impl SymmetricKey {
     }
 }
 
+impl EncryptedMasterKey {
+    pub fn salt(&self) -> String {
+        base64::encode(&self.salt.data)
+    }
+
+    pub fn encrypted_key(&self) -> String {
+        base64::encode(&self.encrypted_data)
+    }
+}
+
 pub struct EncryptingWriter<'a> {
     output: &'a mut Write,
     state: rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state
@@ -78,12 +111,12 @@ pub struct EncryptingWriter<'a> {
 
 impl<'a> EncryptingWriter<'a> {
 
-    pub fn new(key: &'a SymmetricKey, output: &'a mut Write) -> Result<EncryptingWriter<'a>, failure::Error> {
+    pub fn new(key: &'a MasterKey, output: &'a mut Write) -> Result<EncryptingWriter<'a>, failure::Error> {
 
-        let mut header: [u8; HEADER_SIZE] = [0; HEADER_SIZE];
+        let mut header: [u8; STREAM_HEADER_SIZE] = [0; STREAM_HEADER_SIZE];
         let mut state = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state {
             _pad: [0; 8],
-            k: [0; KEY_SIZE],
+            k: [0; MASTER_KEY_SIZE],
             nonce: [0; 12]
         };
 
@@ -175,4 +208,72 @@ pub fn randombytes_into(buf: &mut [u8]) {
     unsafe {
         rust_sodium_sys::randombytes_buf(buf.as_mut_ptr() as *mut _, buf.len());
     }
+}
+
+pub fn encrypt_key(plaintext: &MasterKey, password: &String) -> Result<EncryptedMasterKey, failure::Error> {
+
+    // Need to generate a key from our password
+    let ascii_password = std::ffi::CString::new(password.as_str())
+        .expect("Could not convert String to a CString");
+    let mut key: [u8; SECRETBOX_KEY_SIZE] = [0; SECRETBOX_KEY_SIZE];
+    let salt = random_salt();
+
+    let result;
+    unsafe {
+        result = rust_sodium_sys::crypto_pwhash(
+            key.as_mut_ptr(),
+            SECRETBOX_KEY_SIZE as u64,
+            ascii_password.as_ptr(),
+            password.len() as u64,
+            salt.data.as_ptr(),
+            rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
+            rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
+            rust_sodium_sys::crypto_pwhash_ALG_ARGON2ID13 as i32
+        );
+    }
+
+    if result != 0 {
+        bail!("Ran out of memory during key derivation.");
+    }
+
+    let key = key; // No longer mutable
+
+    // Now we have a key. Let's encrypt the master key with the new password-based key.
+    let mut nonce: [u8; SECRETBOX_NONCE_SIZE] = [0; SECRETBOX_NONCE_SIZE];
+    randombytes_into(&mut nonce);
+    let nonce = nonce; // No longer mutable
+
+    const CIPHER_TEXT_SIZE: usize = MASTER_KEY_SIZE + SECRETBOX_MAC_SIZE;
+    let mut cipher_text: [u8; CIPHER_TEXT_SIZE] = [0; CIPHER_TEXT_SIZE];
+
+    let result;
+    unsafe {
+        result = rust_sodium_sys::crypto_secretbox_easy(
+            cipher_text.as_mut_ptr(),
+            plaintext.data.as_ptr(),
+            MASTER_KEY_SIZE as u64,
+            nonce.as_ptr(),
+            key.as_ptr()
+        );
+    }
+
+    if result != 0 {
+        bail!("Error while encrypting.");
+    }
+
+    let cipher_text = cipher_text; // No longer mutable
+
+    Ok(
+        EncryptedMasterKey {
+            salt: salt,
+            encrypted_data: cipher_text.to_vec()
+        }
+    )
+}
+
+fn random_salt() -> PasswordSalt {
+
+    let mut buf: [u8; PW_SALT_SIZE] = [0; PW_SALT_SIZE];
+    randombytes_into(&mut buf);
+    PasswordSalt { data: buf }
 }

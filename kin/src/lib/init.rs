@@ -2,7 +2,6 @@ use super::cmdline::InitArgs;
 use super::kinproject::KinProject;
 use super::kinsettings::{ KinSettings, KinRecipient };
 use super::libsodium;
-use super::libsodium::SymmetricKey;
 
 pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
@@ -16,11 +15,7 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
         password: random_password()
     }).collect();
 
-    let config = KinSettings {
-        master_key: SymmetricKey::new().encode_base64(),
-        recipients: recipients
-    };
-
+    let config = KinSettings::new(recipients);
     config.write(&project.config_file())?;
 
     Ok(())

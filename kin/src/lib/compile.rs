@@ -2,7 +2,8 @@ use super::backuppackage::BackupPackage;
 use super::cmdline::CompileArgs;
 use super::kinproject::KinProject;
 use super::kinzip::KinZipWriter;
-use super::libsodium::{ EncryptingWriter, SymmetricKey };
+use super::libsodium;
+use super::libsodium::{ EncryptingWriter, EncryptedMasterKey };
 use log::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
@@ -19,8 +20,9 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
     let recip_name = &args.recipient;
     let settings = project.settings()?;
     let peers = settings.get_peers(recip_name)?;
-    let encrypted_keys = peers.iter()
-        .map(|x| encrypt_master_key(&settings.master_key, &x.password))
+    let master_key = settings.master_key()?;
+    let encrypted_keys: Vec<EncryptedMasterKey> = peers.iter()
+        .map(|x| libsodium::encrypt_key(&master_key, &x.password).unwrap())
         .collect();
 
     let dest_package = BackupPackage::init(&args.dest_dir, encrypted_keys)?;
@@ -54,7 +56,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
     temp_archive.finish()?;
 
     let config = src_project.settings()?;
-    let encryption_key = SymmetricKey::decode_base64(&config.master_key)?;
+    let encryption_key = config.master_key()?;
 
     let dest_path = dest_package.private_archive();
     let mut dest_file = OpenOptions::new()
@@ -98,8 +100,4 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf
     }
 
     Ok(())
-}
-
-fn encrypt_master_key(master_key: &String, password: &String) -> String {
-    String::from("not implemented yet!")
 }

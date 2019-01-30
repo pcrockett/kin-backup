@@ -1,5 +1,7 @@
 use super::fsutil;
+use super::libsodium::EncryptedMasterKey;
 use std::fs::File;
+use std::iter::Iterator;
 use std::io::{ BufWriter, Write };
 use std::path::PathBuf;
 
@@ -15,12 +17,17 @@ impl BackupPackage {
         }
     }
 
-    pub fn init(path: &PathBuf, encrypted_keys: Vec<String>) -> Result<BackupPackage, failure::Error> {
+    pub fn init(path: &PathBuf, encrypted_keys: Vec<EncryptedMasterKey>) -> Result<BackupPackage, failure::Error> {
 
         fsutil::ensure_empty_dir(path)?;
         let package = BackupPackage::from(path);
         fsutil::ensure_empty_dir(&package.config_dir())?;
-        let settings = PackageSettings { encrypted_keys };
+
+        let keys = encrypted_keys.iter()
+            .map(|x| EncryptedKey { data: x.encrypted_key(), salt: x.salt() })
+            .collect();
+
+        let settings = PackageSettings { encrypted_keys: keys };
         settings.write(&package.config_file())?;
         Ok(package)
     }
@@ -44,7 +51,13 @@ impl BackupPackage {
 
 #[derive(Serialize, Deserialize)]
 pub struct PackageSettings {
-    pub encrypted_keys: Vec<String>
+    encrypted_keys: Vec<EncryptedKey>
+}
+
+#[derive(Serialize, Deserialize)]
+struct EncryptedKey {
+    data: String,
+    salt: String
 }
 
 impl PackageSettings {
