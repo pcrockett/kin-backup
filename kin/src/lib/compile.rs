@@ -1,5 +1,5 @@
+use super::backuppackage::BackupPackage;
 use super::cmdline::CompileArgs;
-use super::fsutil;
 use super::kinproject::KinProject;
 use super::kinzip::KinZipWriter;
 use super::libsodium::{ EncryptingWriter, SymmetricKey };
@@ -10,59 +10,59 @@ use std::path::PathBuf;
 
 pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
 
-    fsutil::ensure_empty_dir(&args.dest_dir)?;
+    let dest_package = BackupPackage::init(&args.dest_dir)?;
 
     let project = match &args.project_dir {
         Some(dir) => KinProject::from(&dir),
         None => KinProject::from(&std::env::current_dir()?)
     };
 
-    copy_public_dir(&project, &args.dest_dir)?;
-    copy_private_dir(&project, &args)?;
+    copy_public_dir(&project, &dest_package)?;
+    copy_private_dir(&project, &dest_package)?;
 
     Ok(())
 }
 
-fn copy_public_dir(project: &KinProject, dest_dir: &PathBuf) -> Result<(), failure::Error> {
+fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), failure::Error> {
 
-    let dest_archive_path = dest_dir.join("public.zip");
+    let dest_archive_path = dest_package.public_archive();
     let mut dest_archive = KinZipWriter::new(&dest_archive_path)?;
 
-    zip_dir(&project.public_dir(), &mut dest_archive, &PathBuf::from("/"))?;
+    zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::from("/"))?;
 
     dest_archive.finish()?;
 
     Ok(())
 }
 
-fn copy_private_dir(project: &KinProject, args: &CompileArgs) -> Result<(), failure::Error> {
+fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), failure::Error> {
 
-    if project.temp_file().exists() {
-        fs::remove_file(project.temp_file())?;
+    if src_project.temp_file().exists() {
+        fs::remove_file(src_project.temp_file())?;
     }
 
-    let mut temp_archive = KinZipWriter::new(&project.temp_file())?;
-    zip_dir(&project.private_dir(), &mut temp_archive, &PathBuf::from("/"))?;
+    let mut temp_archive = KinZipWriter::new(&src_project.temp_file())?;
+    zip_dir(&src_project.private_dir(), &mut temp_archive, &PathBuf::from("/"))?;
     temp_archive.finish()?;
 
-    let config = project.settings()?;
+    let config = src_project.settings()?;
     let encryption_key = SymmetricKey::decode_base64(&config.master_key)?;
 
-    let dest_path = args.dest_dir.join("private.kin");
+    let dest_path = dest_package.private_archive();
     let mut dest_file = OpenOptions::new()
         .create_new(true)
         .write(true)
         .open(dest_path)?;
 
     {
-        let mut reader = File::open(&project.temp_file())?;
+        let mut reader = File::open(&src_project.temp_file())?;
         let mut writer = EncryptingWriter::new(&encryption_key, &mut dest_file)?;
 
-        let temp_archive_size = project.temp_file().metadata()?.len();
+        let temp_archive_size = src_project.temp_file().metadata()?.len();
         writer.consume(&mut reader, temp_archive_size)?;
     }
 
-    fs::remove_file(project.temp_file())?;
+    fs::remove_file(src_project.temp_file())?;
 
     Ok(())
 }

@@ -3,6 +3,7 @@ pub mod compile;
 pub mod decrypt;
 pub mod init;
 pub mod libsodium;
+mod backuppackage;
 mod fsutil;
 mod kinproject;
 mod kinsettings;
