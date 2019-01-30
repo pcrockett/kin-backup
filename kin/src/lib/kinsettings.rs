@@ -1,5 +1,7 @@
+use failure::{ bail };
 use std::fs::File;
 use std::io::{ BufWriter, Write };
+use std::iter::Iterator;
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
@@ -33,5 +35,29 @@ impl KinSettings {
         let file = File::open(path)?;
         let settings = serde_json::from_reader(file)?;
         Ok(settings)
+    }
+
+    pub fn get_recipient(&self, name: &String) -> Result<&KinRecipient, failure::Error> {
+
+        let recip: Vec<&KinRecipient> = self.recipients.iter()
+            .filter(|x| &x.name == name)
+            .collect();
+
+        if recip.len() != 1 {
+            bail!("{} recipients found with the name \"{}\"", recip.len(), name);
+        }
+
+        Ok(recip[0])
+    }
+
+    pub fn get_peers(&self, name: &String) -> Result<Vec<&KinRecipient>, failure::Error> {
+
+        let recip = self.get_recipient(name)?; // Makes sure this is a valid recipient
+
+        let others: Vec<&KinRecipient> = self.recipients.iter()
+            .filter(|x| &x.name != &recip.name)
+            .collect();
+
+        Ok(others)
     }
 }

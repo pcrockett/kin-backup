@@ -6,16 +6,24 @@ use super::libsodium::{ EncryptingWriter, SymmetricKey };
 use log::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
+use std::iter::Iterator;
 use std::path::PathBuf;
 
 pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
-
-    let dest_package = BackupPackage::init(&args.dest_dir)?;
 
     let project = match &args.project_dir {
         Some(dir) => KinProject::from(&dir),
         None => KinProject::from(&std::env::current_dir()?)
     };
+
+    let recip_name = &args.recipient;
+    let settings = project.settings()?;
+    let peers = settings.get_peers(recip_name)?;
+    let encrypted_keys = peers.iter()
+        .map(|x| encrypt_master_key(&settings.master_key, &x.password))
+        .collect();
+
+    let dest_package = BackupPackage::init(&args.dest_dir, encrypted_keys)?;
 
     copy_public_dir(&project, &dest_package)?;
     copy_private_dir(&project, &dest_package)?;
@@ -90,4 +98,8 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf
     }
 
     Ok(())
+}
+
+fn encrypt_master_key(master_key: &String, password: &String) -> String {
+    String::from("not implemented yet!")
 }
