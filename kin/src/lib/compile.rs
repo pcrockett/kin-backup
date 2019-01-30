@@ -1,7 +1,6 @@
 use super::cmdline::CompileArgs;
 use super::fsutil;
 use super::kinproject::KinProject;
-use super::kinsettings::KinSettings;
 use super::kinzip::KinZipWriter;
 use super::libsodium::{ EncryptingWriter, SymmetricKey };
 use log::{ info };
@@ -46,7 +45,7 @@ fn copy_private_dir(project: &KinProject, args: &CompileArgs) -> Result<(), fail
     zip_dir(&project.private_dir(), &mut temp_archive, &PathBuf::from("/"))?;
     temp_archive.finish()?;
 
-    let config = KinSettings::read(&project.config_file())?;
+    let config = project.settings()?;
     let encryption_key = SymmetricKey::decode_base64(&config.master_key)?;
 
     let dest_path = args.dest_dir.join("private.kin");

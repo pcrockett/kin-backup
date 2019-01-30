@@ -1,4 +1,5 @@
 use super::fsutil;
+use super::kinsettings::KinSettings;
 use std::path::PathBuf;
 
 pub struct KinProject {
@@ -53,5 +54,9 @@ impl KinProject {
 
     pub fn temp_file(&self) -> PathBuf {
         self.config_dir().join("temp")
+    }
+
+    pub fn settings(&self) -> Result<KinSettings, failure::Error> {
+        KinSettings::read(&self.config_file())
     }
 }
