@@ -21,7 +21,11 @@ pub enum SubCommand {
 
     /// Compile a backup
     #[structopt(name = "compile")]
-    Compile(CompileArgs)
+    Compile(CompileArgs),
+
+    /// Decrypt a backup
+    #[structopt(name = "decrypt")]
+    Decrypt(DecryptArgs)
 }
 
 #[derive(StructOpt)]
@@ -38,7 +42,7 @@ pub struct InitArgs {
 #[derive(StructOpt)]
 pub struct CompileArgs {
     /// The destination directory where you want to generate the backup
-    #[structopt(name = "destination", parse(from_os_str))]
+    #[structopt(name = "dest-dir", parse(from_os_str))]
     pub dest_dir: std::path::PathBuf,
 
     /// The recipient for whom you're compiling your backup
@@ -48,6 +52,18 @@ pub struct CompileArgs {
     /// The project directory
     #[structopt(short = "p", long = "project-dir", parse(from_os_str))]
     pub project_dir: Option<std::path::PathBuf>
+}
+
+#[derive(StructOpt)]
+pub struct DecryptArgs {
+
+    /// The directory containing the backup data
+    #[structopt(short = "b", long = "backup-dir", parse(from_os_str))]
+    pub backup_dir: Option<std::path::PathBuf>,
+
+    /// The destination directory where decrypted files should be extracted to
+    #[structopt(short = "d", long = "dest-dir", parse(from_os_str))]
+    pub dest_dir: Option<std::path::PathBuf>
 }
 
 pub fn parse() -> SubCommand {
@@ -148,5 +164,45 @@ mod tests {
         };
 
         assert_eq!(proj_dir.to_str().unwrap(), "~/foo/bar");
+    }
+
+    #[test]
+    /// If no parameters are specified, that's ok; prompt the user for
+    /// information. This should be the most user-friendly portion of the
+    /// software.
+    fn decrypt_no_parameters() {
+        let args = [
+            "kin", "decrypt"
+        ].iter();
+
+        let parsed = CliArgs::from_iter(args);
+        let decrypt_command = match parsed.cmd {
+            SubCommand::Decrypt(args) => args,
+            _ => panic!("not a decrypt subcommand")
+        };
+
+        assert_eq!(decrypt_command.backup_dir, None);
+        assert_eq!(decrypt_command.dest_dir, None);
+    }
+
+    #[test]
+    fn decrypt_with_parameters() {
+        let args = [
+            "kin", "decrypt",
+            "--backup-dir", "~/foo",
+            "--dest-dir", "~/bar"
+        ].iter();
+
+        let parsed = CliArgs::from_iter(args);
+        let decrypt_command = match parsed.cmd {
+            SubCommand::Decrypt(args) => args,
+            _ => panic!("not a decrypt subcommand")
+        };
+
+        let backup_dir = decrypt_command.backup_dir.unwrap();
+        let dest_dir = decrypt_command.dest_dir.unwrap();
+
+        assert_eq!(backup_dir.to_str().unwrap(), "~/foo");
+        assert_eq!(dest_dir.to_str().unwrap(), "~/bar");
     }
 }

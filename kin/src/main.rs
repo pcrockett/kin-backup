@@ -9,7 +9,8 @@ fn main() -> lib::cmdline::CliResult {
 
     match args {
         lib::cmdline::SubCommand::Init(args) => lib::init::run(&args),
-        lib::cmdline::SubCommand::Compile(args) => lib::compile::run(&args)
+        lib::cmdline::SubCommand::Compile(args) => lib::compile::run(&args),
+        lib::cmdline::SubCommand::Decrypt(_args) => panic!("Not implemented yet.")
     }?;
 
     Ok(())
