@@ -34,7 +34,7 @@ fn random_password() -> String {
 fn random_password_from(word_list: Vec<&str>) -> String {
 
     let mut password = String::new();
-    (0..6).map(|_| random_int() as usize)
+    (0..10).map(|_| random_int() as usize)
         .map(|r| r % word_list.len())
         .map(|i| word_list[i])
         .for_each(|word| {
@@ -90,6 +90,6 @@ mod tests {
         let words = vec!("foo");
         let password = super::random_password_from(words);
 
-        assert_eq!(password, "foo foo foo foo foo foo");
+        assert_eq!(password, "foo foo foo foo foo foo foo foo foo foo");
     }
 }
