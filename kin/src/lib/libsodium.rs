@@ -92,6 +92,67 @@ impl MasterKey {
     pub fn encode_base64(&self) -> String {
         base64::encode(&self.data)
     }
+
+    pub fn encrypt(&self, password: &String) -> Result<EncryptedMasterKey, failure::Error> {
+
+        // Need to generate a key from our password
+        let ascii_password = std::ffi::CString::new(password.as_str())
+            .expect("Could not convert passphase to a CString");
+        let mut key: [u8; SECRETBOX_KEY_SIZE] = [0; SECRETBOX_KEY_SIZE];
+        let salt = random_salt();
+
+        let result;
+        unsafe {
+            result = rust_sodium_sys::crypto_pwhash(
+                key.as_mut_ptr(),
+                SECRETBOX_KEY_SIZE as u64,
+                ascii_password.as_ptr(),
+                password.len() as u64,
+                salt.data.as_ptr(),
+                rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
+                rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
+                rust_sodium_sys::crypto_pwhash_ALG_ARGON2ID13 as i32
+            );
+        }
+
+        if result != 0 {
+            bail!("Ran out of memory during key derivation.");
+        }
+
+        let key = key; // No longer mutable
+
+        // Now we have a key. Let's encrypt the master key with the new password-based key.
+        let mut nonce: [u8; SECRETBOX_NONCE_SIZE] = [0; SECRETBOX_NONCE_SIZE];
+        randombytes_into(&mut nonce);
+        let nonce = nonce; // No longer mutable
+
+        const CIPHER_TEXT_SIZE: usize = MASTER_KEY_SIZE + SECRETBOX_MAC_SIZE;
+        let mut cipher_text: [u8; CIPHER_TEXT_SIZE] = [0; CIPHER_TEXT_SIZE];
+
+        let result;
+        unsafe {
+            result = rust_sodium_sys::crypto_secretbox_easy(
+                cipher_text.as_mut_ptr(),
+                self.data.as_ptr(),
+                MASTER_KEY_SIZE as u64,
+                nonce.as_ptr(),
+                key.as_ptr()
+            );
+        }
+
+        if result != 0 {
+            bail!("Error while encrypting.");
+        }
+
+        let cipher_text = cipher_text; // No longer mutable
+
+        Ok(
+            EncryptedMasterKey {
+                salt: salt,
+                encrypted_data: cipher_text.to_vec()
+            }
+        )
+    }
 }
 
 impl EncryptedMasterKey {
@@ -208,67 +269,6 @@ pub fn randombytes_into(buf: &mut [u8]) {
     unsafe {
         rust_sodium_sys::randombytes_buf(buf.as_mut_ptr() as *mut _, buf.len());
     }
-}
-
-pub fn encrypt_key(plaintext: &MasterKey, password: &String) -> Result<EncryptedMasterKey, failure::Error> {
-
-    // Need to generate a key from our password
-    let ascii_password = std::ffi::CString::new(password.as_str())
-        .expect("Could not convert String to a CString");
-    let mut key: [u8; SECRETBOX_KEY_SIZE] = [0; SECRETBOX_KEY_SIZE];
-    let salt = random_salt();
-
-    let result;
-    unsafe {
-        result = rust_sodium_sys::crypto_pwhash(
-            key.as_mut_ptr(),
-            SECRETBOX_KEY_SIZE as u64,
-            ascii_password.as_ptr(),
-            password.len() as u64,
-            salt.data.as_ptr(),
-            rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
-            rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
-            rust_sodium_sys::crypto_pwhash_ALG_ARGON2ID13 as i32
-        );
-    }
-
-    if result != 0 {
-        bail!("Ran out of memory during key derivation.");
-    }
-
-    let key = key; // No longer mutable
-
-    // Now we have a key. Let's encrypt the master key with the new password-based key.
-    let mut nonce: [u8; SECRETBOX_NONCE_SIZE] = [0; SECRETBOX_NONCE_SIZE];
-    randombytes_into(&mut nonce);
-    let nonce = nonce; // No longer mutable
-
-    const CIPHER_TEXT_SIZE: usize = MASTER_KEY_SIZE + SECRETBOX_MAC_SIZE;
-    let mut cipher_text: [u8; CIPHER_TEXT_SIZE] = [0; CIPHER_TEXT_SIZE];
-
-    let result;
-    unsafe {
-        result = rust_sodium_sys::crypto_secretbox_easy(
-            cipher_text.as_mut_ptr(),
-            plaintext.data.as_ptr(),
-            MASTER_KEY_SIZE as u64,
-            nonce.as_ptr(),
-            key.as_ptr()
-        );
-    }
-
-    if result != 0 {
-        bail!("Error while encrypting.");
-    }
-
-    let cipher_text = cipher_text; // No longer mutable
-
-    Ok(
-        EncryptedMasterKey {
-            salt: salt,
-            encrypted_data: cipher_text.to_vec()
-        }
-    )
 }
 
 fn random_salt() -> PasswordSalt {

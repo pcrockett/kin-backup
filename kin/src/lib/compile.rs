@@ -22,7 +22,7 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
     let peers = settings.get_peers(recip_name)?;
     let master_key = settings.master_key()?;
     let encrypted_keys: Vec<EncryptedMasterKey> = peers.iter()
-        .map(|x| libsodium::encrypt_key(&master_key, &x.password).unwrap())
+        .map(|x| master_key.encrypt(&x.password).unwrap())
         .collect();
 
     let dest_package = BackupPackage::init(&args.dest_dir, encrypted_keys)?;
