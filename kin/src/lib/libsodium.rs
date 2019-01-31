@@ -22,6 +22,7 @@ const A_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_ABY
 const SECRETBOX_KEY_SIZE: usize = rust_sodium_sys::crypto_secretbox_KEYBYTES as usize;
 const SECRETBOX_NONCE_SIZE: usize = rust_sodium_sys::crypto_secretbox_NONCEBYTES as usize;
 const SECRETBOX_MAC_SIZE: usize = rust_sodium_sys::crypto_secretbox_MACBYTES as usize;
+const ENCRYPTED_MASTER_KEY_SIZE: usize = MASTER_KEY_SIZE + SECRETBOX_MAC_SIZE;
 
 const PW_SALT_SIZE: usize = rust_sodium_sys::crypto_pwhash_SALTBYTES as usize;
 
@@ -41,11 +42,11 @@ pub fn init() -> Result<(), failure::Error> {
 }
 
 pub struct MasterKey {
-    data: [u8; MASTER_KEY_SIZE]
+    data: Vec<u8>
 }
 
 pub struct PasswordSalt {
-    data: [u8; PW_SALT_SIZE]
+    data: Vec<u8>
 }
 
 pub struct EncryptedMasterKey {
@@ -58,7 +59,7 @@ impl MasterKey {
     pub fn new() -> MasterKey {
 
         let mut key = MasterKey {
-            data: [0; MASTER_KEY_SIZE]
+            data: vec![0; MASTER_KEY_SIZE]
         };
 
         unsafe {
@@ -78,15 +79,11 @@ impl MasterKey {
             );
         }
 
-        let mut key = MasterKey {
-            data: [0; MASTER_KEY_SIZE]
-        };
-
-        for index in 0..MASTER_KEY_SIZE {
-            key.data[index] = decoded[index];
-        }
-
-        Ok(key)
+        Ok(
+            MasterKey {
+                data: decoded
+            }
+        )
     }
 
     pub fn encode_base64(&self) -> String {
@@ -96,7 +93,7 @@ impl MasterKey {
     pub fn encrypt(&self, password: &String) -> Result<EncryptedMasterKey, failure::Error> {
 
         // Need to generate a key from our password
-        let ascii_password = std::ffi::CString::new(password.as_str())
+        let c_password = std::ffi::CString::new(password.as_str())
             .expect("Could not convert passphase to a CString");
         let mut key: [u8; SECRETBOX_KEY_SIZE] = [0; SECRETBOX_KEY_SIZE];
         let salt = random_salt();
@@ -106,8 +103,8 @@ impl MasterKey {
             result = rust_sodium_sys::crypto_pwhash(
                 key.as_mut_ptr(),
                 SECRETBOX_KEY_SIZE as u64,
-                ascii_password.as_ptr(),
-                password.len() as u64,
+                c_password.as_ptr(),
+                c_password.as_bytes().len() as u64,
                 salt.data.as_ptr(),
                 rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
                 rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
@@ -126,8 +123,7 @@ impl MasterKey {
         randombytes_into(&mut nonce);
         let nonce = nonce; // No longer mutable
 
-        const CIPHER_TEXT_SIZE: usize = MASTER_KEY_SIZE + SECRETBOX_MAC_SIZE;
-        let mut cipher_text: [u8; CIPHER_TEXT_SIZE] = [0; CIPHER_TEXT_SIZE];
+        let mut cipher_text: [u8; ENCRYPTED_MASTER_KEY_SIZE] = [0; ENCRYPTED_MASTER_KEY_SIZE];
 
         let result;
         unsafe {
@@ -275,5 +271,5 @@ fn random_salt() -> PasswordSalt {
 
     let mut buf: [u8; PW_SALT_SIZE] = [0; PW_SALT_SIZE];
     randombytes_into(&mut buf);
-    PasswordSalt { data: buf }
+    PasswordSalt { data: buf.to_vec() }
 }
