@@ -1,5 +1,5 @@
 use super::fsutil;
-use super::libsodium::EncryptedMasterKey;
+use super::libsodium::{ EncryptedMasterKey, MasterKey };
 use std::fs::File;
 use std::iter::Iterator;
 use std::io::{ BufWriter, Write };
@@ -46,6 +46,10 @@ impl BackupPackage {
 
     pub fn private_archive(&self) -> PathBuf {
         self.path.join("private.kin")
+    }
+
+    pub fn decrypt_master_key(&self, password: &String) -> Result<MasterKey, failure::Error> {
+        panic!("not implemented yet");
     }
 }
 

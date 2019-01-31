@@ -1,5 +1,7 @@
+use super::backuppackage::BackupPackage;
 use super::cmdline::DecryptArgs;
-use log:: { info };
+use super::libsodium::MasterKey;
+use std::path::PathBuf;
 
 pub fn run(args: &DecryptArgs) -> Result<(), failure::Error> {
 
@@ -13,8 +15,15 @@ pub fn run(args: &DecryptArgs) -> Result<(), failure::Error> {
         None => std::env::current_dir()?
     };
 
-    info!("source_dir: {}", source_dir.to_str().unwrap());
-    info!("dest_dir: {}", dest_dir.to_str().unwrap());
+    let password = String::from("TODO: Prompt user for password");
+    let backup_package = BackupPackage::from(&source_dir);
+    let master_key = backup_package.decrypt_master_key(&password)?;
+
+    decrypt_archive(&backup_package.private_archive(), &dest_dir, master_key)?;
 
     Ok(())
+}
+
+fn decrypt_archive(archive_path: &PathBuf, dest_dir: &PathBuf, master_key: MasterKey) -> Result<(), failure::Error> {
+    panic!("not implemented yet");
 }
