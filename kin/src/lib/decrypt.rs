@@ -1,13 +1,15 @@
 use super::backuppackage::BackupPackage;
 use super::cmdline::DecryptArgs;
 use super::libsodium::MasterKey;
+use std::io;
+use std::io::Write;
 use std::path::PathBuf;
 
 pub fn run(args: &DecryptArgs) -> Result<(), failure::Error> {
 
     let dest_dir = match &args.dest_dir {
         Some(dir) => dir.to_owned(),
-        None => panic!("TODO: Prompt user for a destination directory")
+        None => PathBuf::from(prompt("Enter destination directory: ")?)
     };
 
     let source_dir = match &args.backup_dir {
@@ -22,6 +24,18 @@ pub fn run(args: &DecryptArgs) -> Result<(), failure::Error> {
     decrypt_archive(&backup_package.private_archive(), &dest_dir, master_key)?;
 
     Ok(())
+}
+
+fn prompt(question: &str) -> Result<String, failure::Error> {
+
+    print!("{} ", question);
+    io::stdout().flush()?;
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    input.pop().unwrap(); // Remove newline at end
+
+    Ok(input)
 }
 
 fn decrypt_archive(archive_path: &PathBuf, dest_dir: &PathBuf, master_key: MasterKey) -> Result<(), failure::Error> {
