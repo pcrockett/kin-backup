@@ -17,7 +17,7 @@ pub fn run(args: &DecryptArgs) -> Result<(), failure::Error> {
         None => std::env::current_dir()?
     };
 
-    let password = String::from("TODO: Prompt user for password");
+    let password = rpassword::read_password_from_tty(Some("Enter password: "))?;
     let backup_package = BackupPackage::from(&source_dir);
     let master_key = backup_package.decrypt_master_key(&password)?;
 
