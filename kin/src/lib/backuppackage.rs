@@ -1,5 +1,6 @@
 use super::fsutil;
 use super::libsodium::{ EncryptedMasterKey, MasterKey };
+use failure:: { bail };
 use std::fs::File;
 use std::iter::Iterator;
 use std::io::{ BufWriter, Write };
@@ -49,7 +50,21 @@ impl BackupPackage {
     }
 
     pub fn decrypt_master_key(&self, password: &String) -> Result<MasterKey, failure::Error> {
-        panic!("not implemented yet");
+
+        let settings = PackageSettings::read(&self.config_file())?;
+        let encrypted_keys: Vec<EncryptedMasterKey> = settings.encrypted_keys.iter()
+            .map(|x| EncryptedMasterKey::new(&x.data, &x.salt).unwrap())
+            .collect();
+
+        for encr_key in encrypted_keys {
+
+            match encr_key.decrypt(password) {
+                Ok(key) => return Ok(key),
+                Err(_) => continue // Expected; check the next key in the collection
+            };
+        }
+
+        bail!("Unable to decrypt master key"); // TODO: Be more specific
     }
 }
 
@@ -76,5 +91,12 @@ impl PackageSettings {
         file.flush()?;
 
         Ok(())
+    }
+
+    pub fn read(path: &PathBuf) -> Result<PackageSettings, failure::Error> {
+
+        let file = File::open(path)?;
+        let settings = serde_json::from_reader(file)?;
+        Ok(settings)
     }
 }

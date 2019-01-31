@@ -152,12 +152,37 @@ impl MasterKey {
 }
 
 impl EncryptedMasterKey {
+
+    pub fn new(encrypted_data: &String, salt: &String) -> Result<EncryptedMasterKey, failure::Error> {
+        
+        let encrypted_data = base64::decode(&encrypted_data)?;
+        if encrypted_data.len() != ENCRYPTED_MASTER_KEY_SIZE {
+            bail!("Invalid encrypted key data.");
+        }
+
+        let salt = base64::decode(&salt)?;
+        if salt.len() != PW_SALT_SIZE {
+            bail!("Invalid salt data.");
+        }
+        
+        Ok(
+            EncryptedMasterKey {
+                encrypted_data: encrypted_data,
+                salt: PasswordSalt { data: salt }
+            }
+        )
+    }
+
     pub fn salt(&self) -> String {
         base64::encode(&self.salt.data)
     }
 
     pub fn encrypted_key(&self) -> String {
         base64::encode(&self.encrypted_data)
+    }
+
+    pub fn decrypt(&self, password: &String) -> Result<MasterKey, failure::Error> {
+        panic!("not implemented yet");
     }
 }
 
