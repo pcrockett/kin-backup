@@ -1,6 +1,7 @@
 use super::backuppackage::BackupPackage;
 use super::cmdline::DecryptArgs;
-use super::libsodium::MasterKey;
+use super::libsodium::{ DecryptingWriter, MasterKey };
+use std::fs::{ File, OpenOptions };
 use std::io;
 use std::io::Write;
 use std::path::PathBuf;
@@ -39,5 +40,18 @@ fn prompt(question: &str) -> Result<String, failure::Error> {
 }
 
 fn decrypt_archive(archive_path: &PathBuf, dest_dir: &PathBuf, master_key: MasterKey) -> Result<(), failure::Error> {
-    panic!("not implemented yet");
+
+    let dest_path = dest_dir.join("temp.zip");
+    let mut dest_file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(dest_path)?;
+
+    let mut reader = File::open(&archive_path)?;
+    let mut writer = DecryptingWriter::new(&master_key, &mut dest_file);
+
+    let encrypted_archive_size = archive_path.metadata()?.len();
+    writer.consume(&mut reader, encrypted_archive_size)?;
+
+    Ok(())
 }

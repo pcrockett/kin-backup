@@ -2,7 +2,6 @@ use super::backuppackage::BackupPackage;
 use super::cmdline::CompileArgs;
 use super::kinproject::KinProject;
 use super::kinzip::KinZipWriter;
-use super::libsodium;
 use super::libsodium::{ EncryptingWriter, EncryptedMasterKey };
 use log::{ info };
 use std::fs;
