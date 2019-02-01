@@ -174,7 +174,31 @@ impl EncryptedMasterKey {
     }
 
     pub fn decrypt(&self, password: &String) -> Result<MasterKey, failure::Error> {
-        panic!("not implemented yet");
+
+        let key = PasswordDerivedKey::from(password, &self.salt)?;
+
+        let mut plain_text: [u8; MASTER_KEY_SIZE] = [0; MASTER_KEY_SIZE];
+
+        let result;
+        unsafe {
+            result = rust_sodium_sys::crypto_secretbox_open_easy(
+                plain_text.as_mut_ptr(),
+                self.encrypted_data.as_ptr(),
+                self.encrypted_data.len() as u64,
+                self.nonce.as_ptr(),
+                key.as_ptr()
+            );
+        }
+
+        if result != 0 {
+            bail!("Unable to decrypt."); // TODO: Be more specific
+        }
+
+        Ok(
+            MasterKey {
+                data: plain_text.to_vec()
+            }
+        )
     }
 }
 
