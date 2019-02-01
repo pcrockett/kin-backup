@@ -50,8 +50,9 @@ pub struct PasswordSalt {
 }
 
 pub struct EncryptedMasterKey {
+    encrypted_data: Vec<u8>,
     salt: PasswordSalt,
-    encrypted_data: Vec<u8>
+    nonce: Vec<u8>
 }
 
 struct PasswordDerivedKey {
@@ -125,7 +126,8 @@ impl MasterKey {
         Ok(
             EncryptedMasterKey {
                 salt: key.salt,
-                encrypted_data: cipher_text.to_vec()
+                encrypted_data: cipher_text.to_vec(),
+                nonce: nonce.to_vec()
             }
         )
     }
@@ -133,7 +135,7 @@ impl MasterKey {
 
 impl EncryptedMasterKey {
 
-    pub fn new(encrypted_data: &String, salt: &String) -> Result<EncryptedMasterKey, failure::Error> {
+    pub fn new(encrypted_data: &String, salt: &String, nonce: &String) -> Result<EncryptedMasterKey, failure::Error> {
         
         let encrypted_data = base64::decode(&encrypted_data)?;
         if encrypted_data.len() != ENCRYPTED_MASTER_KEY_SIZE {
@@ -144,11 +146,17 @@ impl EncryptedMasterKey {
         if salt.len() != PW_SALT_SIZE {
             bail!("Invalid salt data.");
         }
+
+        let nonce = base64::decode(&nonce)?;
+        if nonce.len() != SECRETBOX_NONCE_SIZE {
+            bail!("Invalid nonce data.");
+        }
         
         Ok(
             EncryptedMasterKey {
                 encrypted_data: encrypted_data,
-                salt: PasswordSalt { data: salt }
+                salt: PasswordSalt { data: salt },
+                nonce: nonce
             }
         )
     }
@@ -161,6 +169,10 @@ impl EncryptedMasterKey {
         base64::encode(&self.encrypted_data)
     }
 
+    pub fn nonce(&self) -> String {
+        base64::encode(&self.nonce)
+    }
+
     pub fn decrypt(&self, password: &String) -> Result<MasterKey, failure::Error> {
         panic!("not implemented yet");
     }
@@ -169,10 +181,18 @@ impl EncryptedMasterKey {
 impl PasswordDerivedKey {
 
     fn generate(password: &String) -> Result<PasswordDerivedKey, failure::Error> {
-        PasswordDerivedKey::from(password, random_salt())
+
+        let salt = random_salt();
+
+        Ok(
+            PasswordDerivedKey {
+                data: PasswordDerivedKey::from(password, &salt)?,
+                salt: salt
+            }
+        )
     }
 
-    fn from(password: &String, salt: PasswordSalt) -> Result<PasswordDerivedKey, failure::Error> {
+    fn from(password: &String, salt: &PasswordSalt) -> Result<Vec<u8>, failure::Error> {
 
         let c_password = std::ffi::CString::new(password.as_str())
             .expect("Could not convert passphase to a CString");
@@ -196,12 +216,7 @@ impl PasswordDerivedKey {
             bail!("Ran out of memory during key derivation.");
         }
 
-        Ok(
-            PasswordDerivedKey {
-                data: key.to_vec(),
-                salt: salt
-            }
-        )
+        Ok(key.to_vec())
     }
 }
 

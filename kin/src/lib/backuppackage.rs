@@ -25,7 +25,7 @@ impl BackupPackage {
         fsutil::ensure_empty_dir(&package.config_dir())?;
 
         let keys = encrypted_keys.iter()
-            .map(|x| EncryptedKey { data: x.encrypted_key(), salt: x.salt() })
+            .map(|x| EncryptedKey { data: x.encrypted_key(), salt: x.salt(), nonce: x.nonce() })
             .collect();
 
         let settings = PackageSettings { encrypted_keys: keys };
@@ -53,7 +53,7 @@ impl BackupPackage {
 
         let settings = PackageSettings::read(&self.config_file())?;
         let encrypted_keys: Vec<EncryptedMasterKey> = settings.encrypted_keys.iter()
-            .map(|x| EncryptedMasterKey::new(&x.data, &x.salt).unwrap())
+            .map(|x| EncryptedMasterKey::new(&x.data, &x.salt, &x.nonce).unwrap())
             .collect();
 
         for encr_key in encrypted_keys {
@@ -76,7 +76,8 @@ pub struct PackageSettings {
 #[derive(Serialize, Deserialize)]
 struct EncryptedKey {
     data: String,
-    salt: String
+    salt: String,
+    nonce: String
 }
 
 impl PackageSettings {
