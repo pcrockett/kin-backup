@@ -54,6 +54,11 @@ pub struct EncryptedMasterKey {
     encrypted_data: Vec<u8>
 }
 
+struct PasswordDerivedKey {
+    data: Vec<u8>,
+    salt: PasswordSalt
+}
+
 impl MasterKey {
 
     pub fn new() -> MasterKey {
@@ -92,33 +97,8 @@ impl MasterKey {
 
     pub fn encrypt(&self, password: &String) -> Result<EncryptedMasterKey, failure::Error> {
 
-        // Need to generate a key from our password
-        let c_password = std::ffi::CString::new(password.as_str())
-            .expect("Could not convert passphase to a CString");
-        let mut key: [u8; SECRETBOX_KEY_SIZE] = [0; SECRETBOX_KEY_SIZE];
-        let salt = random_salt();
+        let key = PasswordDerivedKey::generate(password)?;
 
-        let result;
-        unsafe {
-            result = rust_sodium_sys::crypto_pwhash(
-                key.as_mut_ptr(),
-                SECRETBOX_KEY_SIZE as u64,
-                c_password.as_ptr(),
-                c_password.as_bytes().len() as u64,
-                salt.data.as_ptr(),
-                rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
-                rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
-                rust_sodium_sys::crypto_pwhash_ALG_ARGON2ID13 as i32
-            );
-        }
-
-        if result != 0 {
-            bail!("Ran out of memory during key derivation.");
-        }
-
-        let key = key; // No longer mutable
-
-        // Now we have a key. Let's encrypt the master key with the new password-based key.
         let mut nonce: [u8; SECRETBOX_NONCE_SIZE] = [0; SECRETBOX_NONCE_SIZE];
         randombytes_into(&mut nonce);
         let nonce = nonce; // No longer mutable
@@ -132,7 +112,7 @@ impl MasterKey {
                 self.data.as_ptr(),
                 MASTER_KEY_SIZE as u64,
                 nonce.as_ptr(),
-                key.as_ptr()
+                key.data.as_ptr()
             );
         }
 
@@ -144,7 +124,7 @@ impl MasterKey {
 
         Ok(
             EncryptedMasterKey {
-                salt: salt,
+                salt: key.salt,
                 encrypted_data: cipher_text.to_vec()
             }
         )
@@ -183,6 +163,45 @@ impl EncryptedMasterKey {
 
     pub fn decrypt(&self, password: &String) -> Result<MasterKey, failure::Error> {
         panic!("not implemented yet");
+    }
+}
+
+impl PasswordDerivedKey {
+
+    fn generate(password: &String) -> Result<PasswordDerivedKey, failure::Error> {
+        PasswordDerivedKey::from(password, random_salt())
+    }
+
+    fn from(password: &String, salt: PasswordSalt) -> Result<PasswordDerivedKey, failure::Error> {
+
+        let c_password = std::ffi::CString::new(password.as_str())
+            .expect("Could not convert passphase to a CString");
+        let mut key: [u8; SECRETBOX_KEY_SIZE] = [0; SECRETBOX_KEY_SIZE];
+
+        let result;
+        unsafe {
+            result = rust_sodium_sys::crypto_pwhash(
+                key.as_mut_ptr(),
+                SECRETBOX_KEY_SIZE as u64,
+                c_password.as_ptr(),
+                c_password.as_bytes().len() as u64,
+                salt.data.as_ptr(),
+                rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
+                rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
+                rust_sodium_sys::crypto_pwhash_ALG_ARGON2ID13 as i32
+            );
+        }
+
+        if result != 0 {
+            bail!("Ran out of memory during key derivation.");
+        }
+
+        Ok(
+            PasswordDerivedKey {
+                data: key.to_vec(),
+                salt: salt
+            }
+        )
     }
 }
 
