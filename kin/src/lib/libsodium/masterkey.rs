@@ -1,4 +1,4 @@
-use super::passphrase::{ PasswordDerivedKey, PasswordSalt };
+use super::passphrase::{ PassphraseDerivedKey, PassphraseSalt };
 use failure::{ bail, format_err };
 use rust_sodium_sys;
 
@@ -11,7 +11,7 @@ pub struct MasterKey {
 
 pub struct EncryptedMasterKey {
     encrypted_data: Vec<u8>,
-    salt: PasswordSalt,
+    salt: PassphraseSalt,
     nonce: Vec<u8>
 }
 
@@ -56,9 +56,9 @@ impl MasterKey {
         base64::encode(&self.data)
     }
 
-    pub fn encrypt(&self, password: &String) -> Result<EncryptedMasterKey, failure::Error> {
+    pub fn encrypt(&self, passphrase: &String) -> Result<EncryptedMasterKey, failure::Error> {
 
-        let key = PasswordDerivedKey::generate(password)?;
+        let key = PassphraseDerivedKey::generate(passphrase)?;
 
         let mut nonce: [u8; SECRETBOX_NONCE_SIZE] = [0; SECRETBOX_NONCE_SIZE];
         super::randombytes_into(&mut nonce);
@@ -106,7 +106,7 @@ impl EncryptedMasterKey {
             bail!("Invalid encrypted key data.");
         }
 
-        let salt = PasswordSalt::from(&salt)?;
+        let salt = PassphraseSalt::from(&salt)?;
 
         let nonce = base64::decode(&nonce)?;
         if nonce.len() != SECRETBOX_NONCE_SIZE {
@@ -122,11 +122,11 @@ impl EncryptedMasterKey {
         )
     }
 
-    pub fn salt(&self) -> String {
+    pub fn passphrase_salt(&self) -> String {
         self.salt.encode_base64()
     }
 
-    pub fn encrypted_key(&self) -> String {
+    pub fn data(&self) -> String {
         base64::encode(&self.encrypted_data)
     }
 
@@ -134,9 +134,9 @@ impl EncryptedMasterKey {
         base64::encode(&self.nonce)
     }
 
-    pub fn decrypt(&self, password: &String) -> Result<MasterKey, failure::Error> {
+    pub fn decrypt(&self, passphrase: &String) -> Result<MasterKey, failure::Error> {
 
-        let key = PasswordDerivedKey::from(password, &self.salt)?;
+        let key = PassphraseDerivedKey::from(passphrase, &self.salt)?;
 
         let mut plain_text: [u8; MASTER_KEY_SIZE] = [0; MASTER_KEY_SIZE];
 

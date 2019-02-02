@@ -12,7 +12,7 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
     let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
         name: r.to_owned(),
-        password: random_password()
+        passphrase: random_passphrase()
     }).collect();
 
     let config = KinSettings::new(recipients);
@@ -21,27 +21,27 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn random_password() -> String {
+fn random_passphrase() -> String {
     let word_list = get_words();
-    random_password_from(word_list)
+    random_passphrase_from(word_list)
 }
 
-fn random_password_from(word_list: Vec<&str>) -> String {
+fn random_passphrase_from(word_list: Vec<&str>) -> String {
 
-    let mut password = String::new();
+    let mut passphrase = String::new();
     (0..10).map(|_| random_int() as usize)
         .map(|r| r % word_list.len())
         .map(|i| word_list[i])
         .for_each(|word| {
-            password.push_str(word);
-            password.push(' ');
+            passphrase.push_str(word);
+            passphrase.push(' ');
         });
 
     // Remove extra last space
-    password.pop();
+    passphrase.pop();
 
-    let password = password; // Get immutable value for returning
-    password
+    let passphrase = passphrase; // Get immutable value for returning
+    passphrase
 }
 
 fn random_int() -> u32 {
@@ -77,14 +77,14 @@ mod tests {
         assert_eq!(words[0], "abacus");
         assert_eq!(words[words.len() - 1], "zoom");
 
-        assert!(words.len() >= 7776, "Number of words has decreased. Either use a larger word list or consider increasing the number of words in passwords to maintain a high entropy.");
+        assert!(words.len() >= 7776, "Number of words has decreased. Either use a larger word list or consider increasing the number of words in passphrases to maintain a high entropy.");
     }
 
     #[test]
-    fn random_password_single_word() {
+    fn random_passphrase_single_word() {
         let words = vec!("foo");
-        let password = super::random_password_from(words);
+        let passphrase = super::random_passphrase_from(words);
 
-        assert_eq!(password, "foo foo foo foo foo foo foo foo foo foo");
+        assert_eq!(passphrase, "foo foo foo foo foo foo foo foo foo foo");
     }
 }

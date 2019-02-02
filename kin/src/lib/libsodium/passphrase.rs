@@ -4,27 +4,27 @@ use rust_sodium_sys;
 // key derivation docs:
 // https://download.libsodium.org/doc/key_derivation
 
-pub struct PasswordSalt {
+pub struct PassphraseSalt {
     data: Vec<u8>
 }
 
-pub struct PasswordDerivedKey {
-    pub salt: PasswordSalt,
+pub struct PassphraseDerivedKey {
+    pub salt: PassphraseSalt,
     data: Vec<u8>
 }
 
 const SECRETBOX_KEY_SIZE: usize = rust_sodium_sys::crypto_secretbox_KEYBYTES as usize;
 const SALT_SIZE: usize = rust_sodium_sys::crypto_pwhash_SALTBYTES as usize;
 
-impl PasswordSalt {
+impl PassphraseSalt {
 
-    fn generate() -> PasswordSalt {
+    fn generate() -> PassphraseSalt {
         let mut buf: [u8; SALT_SIZE] = [0; SALT_SIZE];
         super::randombytes_into(&mut buf);
-        PasswordSalt { data: buf.to_vec() }
+        PassphraseSalt { data: buf.to_vec() }
     }
 
-    pub fn from(base64: &String) -> Result<PasswordSalt, failure::Error> {
+    pub fn from(base64: &String) -> Result<PassphraseSalt, failure::Error> {
 
         let data = base64::decode(&base64)?;
         if data.len() != SALT_SIZE {
@@ -32,7 +32,7 @@ impl PasswordSalt {
         }
 
         Ok(
-            PasswordSalt {
+            PassphraseSalt {
                 data: data
             }
         )
@@ -47,17 +47,17 @@ impl PasswordSalt {
     }
 }
 
-impl PasswordDerivedKey {
+impl PassphraseDerivedKey {
 
-    pub fn generate(password: &String) -> Result<PasswordDerivedKey, failure::Error> {
+    pub fn generate(passphrase: &String) -> Result<PassphraseDerivedKey, failure::Error> {
 
-        let salt = PasswordSalt::generate();
-        PasswordDerivedKey::from(password, &salt)
+        let salt = PassphraseSalt::generate();
+        PassphraseDerivedKey::from(passphrase, &salt)
     }
 
-    pub fn from(password: &String, salt: &PasswordSalt) -> Result<PasswordDerivedKey, failure::Error> {
+    pub fn from(passphrase: &String, salt: &PassphraseSalt) -> Result<PassphraseDerivedKey, failure::Error> {
 
-        let c_password = std::ffi::CString::new(password.as_str())
+        let c_passphrase = std::ffi::CString::new(passphrase.as_str())
             .expect("Could not convert passphase to a CString");
         let mut key: [u8; SECRETBOX_KEY_SIZE] = [0; SECRETBOX_KEY_SIZE];
 
@@ -66,8 +66,8 @@ impl PasswordDerivedKey {
             result = rust_sodium_sys::crypto_pwhash(
                 key.as_mut_ptr(),
                 SECRETBOX_KEY_SIZE as u64,
-                c_password.as_ptr(),
-                c_password.as_bytes().len() as u64,
+                c_passphrase.as_ptr(),
+                c_passphrase.as_bytes().len() as u64,
                 salt.as_ptr(),
                 rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
                 rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
@@ -80,9 +80,9 @@ impl PasswordDerivedKey {
         }
 
         Ok(
-            PasswordDerivedKey {
+            PassphraseDerivedKey {
                 data: key.to_vec(),
-                salt: PasswordSalt {
+                salt: PassphraseSalt {
                     data: salt.data.clone()
                 }
             }

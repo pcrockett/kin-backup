@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[derive(Serialize, Deserialize)]
 pub struct KinRecipient {
     pub name: String,
-    pub password: String
+    pub passphrase: String
 }
 
 #[derive(Serialize, Deserialize)]

@@ -25,7 +25,11 @@ impl BackupPackage {
         fsutil::ensure_empty_dir(&package.config_dir())?;
 
         let keys = encrypted_keys.iter()
-            .map(|x| EncryptedKey { data: x.encrypted_key(), salt: x.salt(), nonce: x.nonce() })
+            .map(|x| EncryptedKey {
+                data: x.data(),
+                passphrase_salt: x.passphrase_salt(),
+                nonce: x.nonce()
+            })
             .collect();
 
         let settings = PackageSettings { encrypted_keys: keys };
@@ -49,16 +53,16 @@ impl BackupPackage {
         self.path.join("private.kin")
     }
 
-    pub fn decrypt_master_key(&self, password: &String) -> Result<MasterKey, failure::Error> {
+    pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, failure::Error> {
 
         let settings = PackageSettings::read(&self.config_file())?;
         let encrypted_keys: Vec<EncryptedMasterKey> = settings.encrypted_keys.iter()
-            .map(|x| EncryptedMasterKey::new(&x.data, &x.salt, &x.nonce).unwrap())
+            .map(|x| EncryptedMasterKey::new(&x.data, &x.passphrase_salt, &x.nonce).unwrap())
             .collect();
 
         for encr_key in encrypted_keys {
 
-            match encr_key.decrypt(password) {
+            match encr_key.decrypt(passphrase) {
                 Ok(key) => return Ok(key),
                 Err(_) => continue // Expected; check the next key in the collection
             };
@@ -76,7 +80,7 @@ pub struct PackageSettings {
 #[derive(Serialize, Deserialize)]
 struct EncryptedKey {
     data: String,
-    salt: String,
+    passphrase_salt: String,
     nonce: String
 }
 
