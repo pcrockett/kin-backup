@@ -1,16 +1,16 @@
 mod lib;
 #[macro_use] extern crate serde_derive;
 
-fn main() -> lib::cmdline::CliResult {
+fn main() -> lib::CliResult {
 
-    let args = lib::cmdline::parse();
+    let args = lib::parse_cmdline();
 
-    lib::libsodium::init()?;
+    lib::libsodium_init()?;
 
     match args {
-        lib::cmdline::SubCommand::Init(args) => lib::init::run(&args),
-        lib::cmdline::SubCommand::Compile(args) => lib::compile::run(&args),
-        lib::cmdline::SubCommand::Decrypt(args) => lib::decrypt::run(&args)
+        lib::SubCommand::Init(args) => lib::init::run(&args),
+        lib::SubCommand::Compile(args) => lib::compile::run(&args),
+        lib::SubCommand::Decrypt(args) => lib::decrypt::run(&args)
     }?;
 
     Ok(())
