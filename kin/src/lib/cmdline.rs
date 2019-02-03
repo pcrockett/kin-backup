@@ -61,9 +61,9 @@ pub struct DecryptArgs {
     #[structopt(short = "b", long = "backup-dir", parse(from_os_str))]
     pub backup_dir: Option<std::path::PathBuf>,
 
-    /// The destination directory where decrypted files should be extracted to
-    #[structopt(short = "d", long = "dest-dir", parse(from_os_str))]
-    pub dest_dir: Option<std::path::PathBuf>
+    /// The destination decrypted archive path
+    #[structopt(short = "d", long = "destination", parse(from_os_str))]
+    pub destination: Option<std::path::PathBuf>
 }
 
 pub fn parse() -> SubCommand {
@@ -182,7 +182,7 @@ mod tests {
         };
 
         assert_eq!(decrypt_command.backup_dir, None);
-        assert_eq!(decrypt_command.dest_dir, None);
+        assert_eq!(decrypt_command.destination, None);
     }
 
     #[test]
@@ -190,7 +190,7 @@ mod tests {
         let args = [
             "kin", "decrypt",
             "--backup-dir", "~/foo",
-            "--dest-dir", "~/bar"
+            "--destination", "~/bar"
         ].iter();
 
         let parsed = CliArgs::from_iter(args);
@@ -200,9 +200,9 @@ mod tests {
         };
 
         let backup_dir = decrypt_command.backup_dir.unwrap();
-        let dest_dir = decrypt_command.dest_dir.unwrap();
+        let destination = decrypt_command.destination.unwrap();
 
         assert_eq!(backup_dir.to_str().unwrap(), "~/foo");
-        assert_eq!(dest_dir.to_str().unwrap(), "~/bar");
+        assert_eq!(destination.to_str().unwrap(), "~/bar");
     }
 }

@@ -20,7 +20,7 @@ fn main() -> lib::CliResult {
 
             let decrypt_args = lib::DecryptArgs {
                 backup_dir: Some(exe_path.parent().unwrap().to_path_buf()),
-                dest_dir: None // Will prompt the user for a destination directory
+                destination: None // Will prompt the user for a destination
             };
 
             lib::decrypt::run(&decrypt_args)?;
