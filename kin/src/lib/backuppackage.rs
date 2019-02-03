@@ -53,6 +53,10 @@ impl BackupPackage {
         self.path.join("private.kin")
     }
 
+    pub fn decrypt_exe(&self) -> PathBuf {
+        self.path.join("decrypt") // TODO: Support Windows
+    }
+
     pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, failure::Error> {
 
         let settings = PackageSettings::read(&self.config_file())?;

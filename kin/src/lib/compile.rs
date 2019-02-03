@@ -28,6 +28,7 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
 
     copy_public_dir(&project, &dest_package)?;
     copy_private_dir(&project, &dest_package)?;
+    copy_exe(&dest_package)?;
 
     Ok(())
 }
@@ -97,6 +98,15 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf
             dest_archive.add_file(&item.path(), String::from(dest_path))?;
         }
     }
+
+    Ok(())
+}
+
+fn copy_exe(dest_package: &BackupPackage) -> Result<(), failure::Error> {
+
+    let src = std::env::current_exe()?;
+    let dst = dest_package.decrypt_exe();
+    fs::copy(src, dst)?;
 
     Ok(())
 }
