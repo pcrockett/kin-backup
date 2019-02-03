@@ -59,7 +59,11 @@ impl BackupPackage {
 
     pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, failure::Error> {
 
-        let settings = PackageSettings::read(&self.config_file())?;
+        let settings = match PackageSettings::read(&self.config_file()) {
+            Ok(settings) => settings,
+            Err(err) => bail!("Unable to parse {}: {}", self.config_file().to_str().unwrap(), err)
+        };
+
         let encrypted_keys: Vec<EncryptedMasterKey> = settings.encrypted_keys.iter()
             .map(|x| EncryptedMasterKey::new(&x.data, &x.passphrase_salt, &x.nonce).unwrap())
             .collect();
