@@ -1,11 +1,10 @@
 use super::backuppackage::BackupPackage;
 use super::cmdline::DecryptArgs;
 use super::libsodium::{ DecryptingWriter, MasterKey };
+use super::ui;
 use failure::{ bail };
 use log::{ info };
 use std::fs::{ File, OpenOptions };
-use std::io;
-use std::io::Write;
 use std::path::PathBuf;
 
 pub fn run(args: &DecryptArgs) -> Result<(), failure::Error> {
@@ -38,7 +37,7 @@ fn prompt_dest_archive() -> Result<PathBuf, failure::Error> {
 
     loop {
 
-        let path = prompt("Enter file path: ")?;
+        let path = ui::prompt("Enter file path: ")?;
         if path.len() == 0 {
             continue;
         }
@@ -56,18 +55,6 @@ fn prompt_dest_archive() -> Result<PathBuf, failure::Error> {
             println!("{} doesn't exist.", dir.to_str().unwrap());
         }
     }
-}
-
-fn prompt(question: &str) -> Result<String, failure::Error> {
-
-    print!("{} ", question);
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    input.pop().unwrap(); // Remove newline at end
-
-    Ok(input)
 }
 
 fn decrypt_archive(encrypted_archive_path: &PathBuf, dest_path: &PathBuf, master_key: MasterKey) -> Result<(), failure::Error> {
