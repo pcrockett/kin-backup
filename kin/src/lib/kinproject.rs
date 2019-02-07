@@ -56,6 +56,10 @@ impl KinProject {
         self.config_dir().join("temp")
     }
 
+    pub fn template_readme(&self) -> PathBuf {
+        self.path.join("readme-template.md")
+    }
+
     pub fn settings(&self) -> Result<KinSettings, failure::Error> {
         KinSettings::read(&self.config_file())
     }

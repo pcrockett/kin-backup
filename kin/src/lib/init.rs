@@ -2,6 +2,8 @@ use super::cmdline::InitArgs;
 use super::kinproject::KinProject;
 use super::kinsettings::{ KinSettings, KinRecipient };
 use super::libsodium;
+use std::fs::File;
+use std::io::{ BufWriter, Write };
 
 pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
@@ -17,6 +19,11 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
 
     let config = KinSettings::new(recipients);
     config.write(&project.config_file())?;
+
+    let template_contents = include_bytes!("readme-template.md");
+    let file = File::create(project.template_readme())?;
+    let mut file = BufWriter::new(file);
+    file.write_all(template_contents)?;
 
     Ok(())
 }
