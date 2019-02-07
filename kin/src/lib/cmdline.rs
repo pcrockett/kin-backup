@@ -36,7 +36,11 @@ pub struct InitArgs {
 
     /// Specify to whom you plan to give your backups
     #[structopt(short = "r", long = "recipients")]
-    pub recipients: Vec<String>
+    pub recipients: Vec<String>,
+
+    /// Specify your name (for readme that gets distributed to backup holders)
+    #[structopt(short = "o", long = "owner")]
+    pub owner: Option<String>
 }
 
 #[derive(StructOpt)]
@@ -125,6 +129,22 @@ mod tests {
         assert_eq!(init_args.recipients.len(), 2);
         assert_eq!(init_args.recipients[0], "foo@bar.com");
         assert_eq!(init_args.recipients[1], "hi@bye.com");
+    }
+
+    #[test]
+    fn init_with_owner() {
+
+        let args = [
+            "kin", "init", "--owner", "chuck"
+        ].iter();
+
+        let parsed = CliArgs::from_iter(args);
+        let init_args = match parsed.cmd {
+            SubCommand::Init(args) => args,
+            _ => panic!("not an init subcommand")
+        };
+
+        assert_eq!(init_args.owner.unwrap(), "chuck");
     }
 
     #[test]

@@ -2,6 +2,7 @@ use super::cmdline::InitArgs;
 use super::kinproject::KinProject;
 use super::kinsettings::{ KinSettings, KinRecipient };
 use super::libsodium;
+use super::ui;
 use std::fs::File;
 use std::io::{ BufWriter, Write };
 
@@ -12,12 +13,17 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
         None => KinProject::init(&std::env::current_dir()?)?
     };
 
+    let owner = match &args.owner {
+        Some(name) => name.clone(),
+        None => prompt_owner_name()?
+    };
+
     let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
         name: r.to_owned(),
         passphrase: random_passphrase()
     }).collect();
 
-    let config = KinSettings::new(recipients);
+    let config = KinSettings::new(&owner, recipients);
     config.write(&project.config_file())?;
 
     let template_contents = include_bytes!("readme-template.md");
@@ -26,6 +32,18 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
     file.write_all(template_contents)?;
 
     Ok(())
+}
+
+fn prompt_owner_name() -> Result<String, failure::Error> {
+
+    loop {
+        let input = ui::prompt("Enter your name: ")?;
+        if input.len() == 0 {
+            continue; // TODO: Allow owner name to be optional?
+        }
+
+        return Ok(input);
+    }
 }
 
 fn random_passphrase() -> String {

@@ -13,14 +13,16 @@ pub struct KinRecipient {
 
 #[derive(Serialize, Deserialize)]
 pub struct KinSettings {
+    owner: String,
     master_key: String,
     pub recipients: Vec<KinRecipient>
 }
 
 impl KinSettings {
 
-    pub fn new(recipients: Vec<KinRecipient>) -> KinSettings {
+    pub fn new(owner: &String, recipients: Vec<KinRecipient>) -> KinSettings {
         KinSettings {
+            owner: owner.clone(),
             master_key: MasterKey::new().encode_base64(),
             recipients: recipients
         }
