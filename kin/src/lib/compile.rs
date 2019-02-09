@@ -35,7 +35,7 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
 
 fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), failure::Error> {
 
-    let dest_archive_path = dest_package.public_archive();
+    let dest_archive_path = dest_package.public_archive_path();
     let mut dest_archive = KinZipWriter::new(&dest_archive_path)?;
 
     zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::from("/"))?;
@@ -58,7 +58,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
     let config = src_project.settings()?;
     let encryption_key = config.master_key()?;
 
-    let dest_path = dest_package.private_archive();
+    let dest_path = dest_package.private_archive_path();
     let mut dest_file = OpenOptions::new()
         .create_new(true)
         .write(true)
@@ -105,8 +105,9 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf
 fn copy_exe(dest_package: &BackupPackage) -> Result<(), failure::Error> {
 
     let src = std::env::current_exe()?;
-    let dst = dest_package.decrypt_exe();
+    let dst = dest_package.decrypt_exe_path();
     fs::copy(src, dst)?;
 
     Ok(())
 }
+

@@ -26,7 +26,7 @@ pub fn run(args: &DecryptArgs) -> Result<(), failure::Error> {
     let passphrase = rpassword::read_password_from_tty(Some("Enter passphrase: "))?;
     let master_key = backup_package.decrypt_master_key(&passphrase)?;
 
-    decrypt_archive(&backup_package.private_archive(), &dest_archive, master_key)?;
+    decrypt_archive(&backup_package.private_archive_path(), &dest_archive, master_key)?;
 
     Ok(())
 }

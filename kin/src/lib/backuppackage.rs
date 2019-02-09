@@ -22,7 +22,7 @@ impl BackupPackage {
 
         fsutil::ensure_empty_dir(path)?;
         let package = BackupPackage::from(path);
-        fsutil::ensure_empty_dir(&package.config_dir())?;
+        fsutil::ensure_empty_dir(&package.config_dir_path())?;
 
         let keys = encrypted_keys.iter()
             .map(|x| EncryptedKey {
@@ -33,35 +33,35 @@ impl BackupPackage {
             .collect();
 
         let settings = PackageSettings { encrypted_keys: keys };
-        settings.write(&package.config_file())?;
+        settings.write(&package.config_file_path())?;
         Ok(package)
     }
 
-    pub fn config_dir(&self) -> PathBuf {
+    pub fn config_dir_path(&self) -> PathBuf {
         self.path.join(".kin")
     }
 
-    pub fn config_file(&self) -> PathBuf {
-        self.config_dir().join("config.json")
+    pub fn config_file_path(&self) -> PathBuf {
+        self.config_dir_path().join("config.json")
     }
 
-    pub fn public_archive(&self) -> PathBuf {
+    pub fn public_archive_path(&self) -> PathBuf {
         self.path.join("public.zip")
     }
 
-    pub fn private_archive(&self) -> PathBuf {
+    pub fn private_archive_path(&self) -> PathBuf {
         self.path.join("private.kin")
     }
 
-    pub fn decrypt_exe(&self) -> PathBuf {
+    pub fn decrypt_exe_path(&self) -> PathBuf {
         self.path.join("decrypt") // TODO: Support Windows
     }
 
     pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, failure::Error> {
 
-        let settings = match PackageSettings::read(&self.config_file()) {
+        let settings = match PackageSettings::read(&self.config_file_path()) {
             Ok(settings) => settings,
-            Err(err) => bail!("Unable to parse {}: {}", self.config_file().to_str().unwrap(), err)
+            Err(err) => bail!("Unable to parse {}: {}", self.config_file_path().to_str().unwrap(), err)
         };
 
         let encrypted_keys: Vec<EncryptedMasterKey> = settings.encrypted_keys.iter()
