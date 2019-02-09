@@ -57,6 +57,10 @@ impl BackupPackage {
         self.path.join("decrypt") // TODO: Support Windows
     }
 
+    pub fn readme_path(&self) -> PathBuf {
+        self.path.join("readme.html")
+    }
+
     pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, failure::Error> {
 
         let settings = match PackageSettings::read(&self.config_file_path()) {

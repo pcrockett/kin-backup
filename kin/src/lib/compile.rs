@@ -6,6 +6,7 @@ use super::libsodium::{ EncryptingWriter, EncryptedMasterKey };
 use log::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
+use std::io::{ BufReader, BufWriter, Read, Write };
 use std::iter::Iterator;
 use std::path::PathBuf;
 
@@ -29,6 +30,7 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
     copy_public_dir(&project, &dest_package)?;
     copy_private_dir(&project, &dest_package)?;
     copy_exe(&dest_package)?;
+    copy_readme(&project, &dest_package)?;
 
     Ok(())
 }
@@ -111,3 +113,25 @@ fn copy_exe(dest_package: &BackupPackage) -> Result<(), failure::Error> {
     Ok(())
 }
 
+fn copy_readme(project: &KinProject, dest_package: &BackupPackage) -> Result<(), failure::Error> {
+
+    let mut md_content = String::new();
+
+    {
+        let md_file = File::open(project.template_readme())?;
+        let mut md_file = BufReader::new(md_file);
+        md_file.read_to_string(&mut md_content)?;
+    }
+
+    let md_content = md_content; // Make immutable
+
+    let parser = pulldown_cmark::Parser::new(md_content.as_str());
+    let mut html_content = String::new();
+    pulldown_cmark::html::push_html(&mut html_content, parser);
+
+    let html_file = File::create(dest_package.readme_path())?;
+    let mut html_file = BufWriter::new(html_file);
+    html_file.write_all(html_content.as_bytes())?;
+
+    Ok(())
+}
