@@ -17,15 +17,10 @@ To gain access to the private content, you will need to decrypt it. A simple pro
 However there's a catch: You cannot decrypt your backup by yourself. {{owner}} has given similar backups to a few other people. You have the ability to decrypt _their_ backups, and they have the ability to decrypt _your_ backup. But no one can decrypt their own backups. This is to protect {{owner}} in case one of the backup holders is robbed, etc.
 
 <!--
-
-You may wish to list the other backup holders here. Or for extra security, you may want AVOID listing them here, and just tell them who the other backup holders are verbally. Remember that whatever you choose, they may need to remember this 10 years from now.
-
-Here's an example of creating a bulleted list of the backup holder's peers:
-
+You may wish to list the other backup holders here. Or for extra security, you may want AVOID listing them here, and just tell them who the other backup holders are verbally. Remember that whatever you choose, they may need to remember this 10 years from now. Here's an example of creating a bulleted list of the backup holder's peers:
 {{#peers}}
 * {{name}}
 {{/peers}}
-
 -->
 
 Here is the passphrase you need to decrypt other peoples' copies of the backup:
