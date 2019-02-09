@@ -47,6 +47,10 @@ impl KinSettings {
         Ok(settings)
     }
 
+    pub fn owner(&self) -> String {
+        self.owner.clone()
+    }
+
     pub fn get_recipient(&self, name: &String) -> Result<&KinRecipient, failure::Error> {
 
         let recip: Vec<&KinRecipient> = self.recipients.iter()

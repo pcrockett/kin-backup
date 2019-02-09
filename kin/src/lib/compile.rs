@@ -1,13 +1,14 @@
 use super::backuppackage::BackupPackage;
 use super::cmdline::CompileArgs;
 use super::kinproject::KinProject;
+use super::kinsettings::{ KinSettings };
 use super::kinzip::KinZipWriter;
 use super::libsodium::{ EncryptingWriter, EncryptedMasterKey };
 use super::templating;
+use super::templating::{ PeerModel, ReadmeModel };
 use log::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
-use std::io::{ BufReader, Read };
 use std::iter::Iterator;
 use std::path::PathBuf;
 
@@ -31,7 +32,7 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
     copy_public_dir(&project, &dest_package)?;
     copy_private_dir(&project, &dest_package)?;
     copy_exe(&dest_package)?;
-    copy_readme(&project, &dest_package)?;
+    copy_readme(&project, &settings, &recip_name, &dest_package)?;
 
     Ok(())
 }
@@ -114,18 +115,24 @@ fn copy_exe(dest_package: &BackupPackage) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn copy_readme(project: &KinProject, dest_package: &BackupPackage) -> Result<(), failure::Error> {
+fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String, dest_package: &BackupPackage) -> Result<(), failure::Error> {
 
-    let mut md_content = String::new();
+    let peers = settings.get_peers(&recipient)?.iter()
+        .map(|p| PeerModel {
+            name: p.name.clone()
+        })
+        .collect();
 
-    {
-        let md_file = File::open(project.template_readme())?;
-        let mut md_file = BufReader::new(md_file);
-        md_file.read_to_string(&mut md_content)?;
-    }
+    let recipient = settings.get_recipient(&recipient)?;
 
-    // TODO: Run md_content through mustache before rendering to HTML
-    templating::render_html(&md_content, &dest_package.readme_path())?;
+    let model = ReadmeModel {
+        owner: settings.owner(),
+        recipient: recipient.name.clone(),
+        passphrase: recipient.passphrase.clone(),
+        peers: peers
+    };
+
+    templating::render_readme(&project.template_readme(), &model, &dest_package.readme_path())?;
 
     Ok(())
 }
