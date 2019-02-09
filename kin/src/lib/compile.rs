@@ -124,8 +124,7 @@ fn copy_readme(project: &KinProject, dest_package: &BackupPackage) -> Result<(),
         md_file.read_to_string(&mut md_content)?;
     }
 
-    let md_content = md_content; // Make immutable
-
+    // TODO: Run md_content through mustache before rendering to HTML
     templating::render_html(&md_content, &dest_package.readme_path())?;
 
     Ok(())
