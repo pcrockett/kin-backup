@@ -23,3 +23,41 @@ Build Requirements
 ------------------
 
 Kin Backup is created using Rust, so you need a Rust development environment. Since we're using libsodium, to build this project you'll also need a C compiler (`cc`, `clang`, etc) and `libssl-dev` (assuming you're on Ubuntu).
+
+Getting Started
+---------------
+
+Once you have Kin installed, it's time to create an empty backup project. **Recommended:** Because you will probably be storing sensitive files in this backup project, you should create it in a location where drive encryption is enabled.
+
+Assuming your name is Owen, and you want to give backups to three trusted family members named Alice, Bob, and Chuck:
+
+```bash
+mkdir backup_project
+cd backup_project
+kin init --owner Owen --recipients Alice Bob Chuck
+```
+
+This creates three things:
+
+* A `public` folder where you put your public files. These will _not_ be encrypted.
+* A `private` folder where you put all your private files. These will be encrypted.
+* A `readme-template.md` file, which is a [markdown](https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet) file that will be used to generate nice looking readme files for your backup recipients.
+
+Once you put the appropriate files in the `public` and `private` folders, and make adjustments to `readme-template.md` so it looks the way you want, it's time to compile backup packages for Alice, Bob, and Chuck.
+
+Insert a USB flash drive into your computer and mount it. Assuming your flash drive is mounted at `/media/flash_drive/`:
+
+```bash
+kin compile --recipient Alice /media/flash_drive/
+```
+
+Feel free to inspect the contents of the flash drive now. You'll notice:
+
+* A `public.zip` file that contains all the files in your `public` folder
+* A `private.kin` file, which is an encrypted archive that contains all the files in your `private` folder
+* A `readme.html` file, which when opened, explains what this is and how to decrypt the backup. Notice that it shows you Alice's randomly-generated passphrase.
+* A `decrypt` program, which if you run it, will decrypt the `private.kin` file when you enter either Bob's or Chuck's passphrase. If you try to enter Alice's passphrase, the decryption will fail; you cannot decrypt Alice's backup with Alice's passphrase.
+
+Now eject the flash drive and insert a new one for Bob. Run the same `compile` command as above, except with "Bob" as the recipient. Now run the `decrypt` program on Bob's flash drive, but use _Alice's_ passphrase. The decryption will succeed.
+
+Create a backup package for Chuck as well, and then distribute your three flash drives to your three recipients. Now when you get hit by a bus, they won't be up a creek when they need to access your super secret important stuff.
