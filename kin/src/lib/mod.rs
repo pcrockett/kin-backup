@@ -13,4 +13,5 @@ mod kinproject;
 mod kinsettings;
 mod kinzip;
 mod libsodium;
+mod templating;
 mod ui;

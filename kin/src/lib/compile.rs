@@ -3,10 +3,11 @@ use super::cmdline::CompileArgs;
 use super::kinproject::KinProject;
 use super::kinzip::KinZipWriter;
 use super::libsodium::{ EncryptingWriter, EncryptedMasterKey };
+use super::templating;
 use log::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
-use std::io::{ BufReader, BufWriter, Read, Write };
+use std::io::{ BufReader, Read };
 use std::iter::Iterator;
 use std::path::PathBuf;
 
@@ -125,13 +126,7 @@ fn copy_readme(project: &KinProject, dest_package: &BackupPackage) -> Result<(),
 
     let md_content = md_content; // Make immutable
 
-    let parser = pulldown_cmark::Parser::new(md_content.as_str());
-    let mut html_content = String::new();
-    pulldown_cmark::html::push_html(&mut html_content, parser);
-
-    let html_file = File::create(dest_package.readme_path())?;
-    let mut html_file = BufWriter::new(html_file);
-    html_file.write_all(html_content.as_bytes())?;
+    templating::render_html(&md_content, &dest_package.readme_path())?;
 
     Ok(())
 }
