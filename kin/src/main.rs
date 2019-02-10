@@ -3,6 +3,8 @@ mod lib;
 
 fn main() -> lib::CliResult {
 
+    lib::libsodium_init()?;
+
     if std::env::args().len() <= 1 {
         // Not run with any args; the first arg in the array is just the
         // executable path
@@ -30,8 +32,6 @@ fn main() -> lib::CliResult {
     }
 
     let args = lib::parse_cmdline();
-
-    lib::libsodium_init()?;
 
     match args {
         lib::SubCommand::Init(args) => lib::init::run(&args),
