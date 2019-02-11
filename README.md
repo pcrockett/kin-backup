@@ -19,7 +19,7 @@ Kin is a simple system that creates backup packages for your relatives to keep l
 
 Of course giving any one person such sensitive "keys to the kingdom" is arguably a bad idea. Which is why Kin prevents any one individual from being able to decrypt the backup that they have access to. Kin is designed so that you give backups to at least two different people (recommended three or more). Each person cannot decrypt their own backup, but they can decrypt a backup that someone else holds. This isn't just to protect you from one family member going rogue, but also protects you when your trusted backup-holders experience burglary or otherwise lose track of your backups.
 
-Kin also helps generate a clear, concise, non-technical readme for your relatives. You can customize the readme however you want. Each backup comes with a simple decryption program that runs on Linux, and in version 1.0 it will provide an executable for Windows and Mac OS as well.
+Kin also helps generate a clear, concise, non-technical readme HTML file for your relatives. You can customize the readme however you want using a markdown template. In version 1.0, this readme file will have a small self-contained Javascript app embedded in it which will decrypt the backup. For now, a Linux-only `decrypt` executable comes with each backup package.
 
 Encryption is implemented using the widely-used and trusted [libsodium](https://download.libsodium.org/doc/) library. That said, Kin should definitely _not_ be used as an online backup, is definitely _not_ meant to be given to untrustworthy people, and will definitely _not_ protect you from the NSA.
 
