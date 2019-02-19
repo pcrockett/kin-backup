@@ -1,6 +1,7 @@
 use super::backuppackage::BackupPackage;
 use super::cmdline::DecryptArgs;
-use super::libsodium::{ DecryptingWriter, MasterKey };
+use super::libsodium;
+use super::libsodium::{ MasterKey };
 use super::ui;
 use failure::{ bail };
 use log::{ info };
@@ -74,10 +75,7 @@ fn decrypt_archive(encrypted_archive_path: &PathBuf, dest_path: &PathBuf, master
         Err(err) => bail!("Unable to open {}: {}", encrypted_archive_path.to_str().unwrap(), err)
     };
 
-    let mut writer = DecryptingWriter::new(&master_key, &mut dest_file);
-
-    let encrypted_archive_size = encrypted_archive_path.metadata()?.len();
-    writer.consume(&mut reader, encrypted_archive_size)?;
+    libsodium::decrypt(&master_key, &mut reader, &mut dest_file)?;
 
     Ok(())
 }

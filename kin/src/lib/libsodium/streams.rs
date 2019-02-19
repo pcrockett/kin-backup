@@ -1,17 +1,10 @@
 use super::masterkey::{ MasterKey, MASTER_KEY_SIZE };
 use failure::{ bail };
-use std::io;
-use std::io::{ Read, Write, ErrorKind };
+use std::io::{ Read, Write };
 use std::ptr;
 
 // stream encryption docs:
 // https://download.libsodium.org/doc/secret-key_cryptography/secretstream
-
-pub struct DecryptingWriter<'a> {
-    output: &'a mut Write,
-    state: rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state,
-    key: &'a MasterKey
-}
 
 const STREAM_HEADER_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_HEADERBYTES as usize;
 const STREAM_BUF_SIZE: u64 = 16384; // 16 KiB
@@ -42,6 +35,36 @@ pub fn encrypt(key: &MasterKey, input: &mut Read, output: &mut Write) -> Result<
     Ok(())
 }
 
+pub fn decrypt(key: &MasterKey, input: &mut Read, output: &mut Write) -> Result<(), failure::Error> {
+
+    let mut state = init_decrypt(&key, input)?;
+
+    const DECRYPT_BUF_SIZE: usize = STREAM_BUF_SIZE as usize + A_SIZE;
+    let mut buffer: [u8; DECRYPT_BUF_SIZE] = [0; DECRYPT_BUF_SIZE];
+
+    loop {
+        let read_count = read_chunk(&mut buffer, input)?;
+
+        if read_count == 0 {
+            break; // No more data to decrypt
+        }
+
+        let is_final = read_count < DECRYPT_BUF_SIZE;
+        if is_final {
+            let plaintext = decrypt_chunk(&mut state, &buffer[0..read_count])?;
+            output.write(&plaintext)?;
+            output.flush()?;
+            break;
+        } else {
+            let plaintext = decrypt_chunk(&mut state, &buffer)?;
+            output.write(&plaintext)?;
+        }
+
+    }
+
+    Ok(())
+}
+
 fn init_encrypt(key: &MasterKey, output: &mut Write) -> Result<rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state, failure::Error> {
 
     let mut header: [u8; STREAM_HEADER_SIZE] = [0; STREAM_HEADER_SIZE];
@@ -52,11 +75,15 @@ fn init_encrypt(key: &MasterKey, output: &mut Write) -> Result<rust_sodium_sys::
     };
 
     unsafe {
-        rust_sodium_sys::crypto_secretstream_xchacha20poly1305_init_push(
+        let result = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_init_push(
             &mut state,
             header.as_mut_ptr(),
             key.as_ptr()
         );
+
+        if result != 0 {
+            bail!("unable to initialize encryption");
+        }
     }
 
     output.write(&header)?;
@@ -64,7 +91,7 @@ fn init_encrypt(key: &MasterKey, output: &mut Write) -> Result<rust_sodium_sys::
     Ok(state)
 }
 
-fn read_chunk(buffer: &mut [u8; STREAM_BUF_SIZE as usize], reader: &mut Read) -> Result<usize, std::io::Error> {
+fn read_chunk(buffer: &mut [u8], reader: &mut Read) -> Result<usize, std::io::Error> {
 
     let iterator = reader.bytes();
     let mut byte_count = 0;
@@ -75,7 +102,7 @@ fn read_chunk(buffer: &mut [u8; STREAM_BUF_SIZE as usize], reader: &mut Read) ->
         }
 
         byte_count = byte_count + 1;
-        if byte_count >= STREAM_BUF_SIZE as usize {
+        if byte_count >= buffer.len() {
             break;
         }
     }
@@ -117,90 +144,60 @@ fn encrypt_chunk(state: &mut rust_sodium_sys::crypto_secretstream_xchacha20poly1
     Ok(ciphertext)
 }
 
-impl<'a> DecryptingWriter<'a> {
+fn init_decrypt(key: &MasterKey, reader: &mut Read) -> Result<rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state, failure::Error> {
 
-    pub fn new(key: &'a MasterKey, output: &'a mut Write) -> DecryptingWriter<'a> {
+    let mut state = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state {
+        _pad: [0; 8],
+        k: [0; MASTER_KEY_SIZE],
+        nonce: [0; 12]
+    };
 
-        let state = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state {
-            _pad: [0; 8],
-            k: [0; MASTER_KEY_SIZE],
-            nonce: [0; 12]
-        };
+    let mut header: [u8; STREAM_HEADER_SIZE] = [0; STREAM_HEADER_SIZE];
+    reader.read_exact(&mut header)?;
 
-        DecryptingWriter {
-            key: key,
-            output: output,
-            state: state
-        }
-    }
-
-    pub fn consume(&mut self, reader: &mut Read, total_length: u64) -> io::Result<()> {
-
-        let mut header: [u8; STREAM_HEADER_SIZE] = [0; STREAM_HEADER_SIZE];
-        reader.read_exact(&mut header)?;
-
-        unsafe {
-            rust_sodium_sys::crypto_secretstream_xchacha20poly1305_init_pull(
-                &mut self.state,
-                header.as_mut_ptr(),
-                self.key.as_ptr()
-            );
-        }
-
-        let mut length_remaining = total_length - STREAM_HEADER_SIZE as u64;
-        const DECRYPT_BUF_SIZE: u64 = STREAM_BUF_SIZE + A_SIZE as u64;
-
-        while length_remaining > 0 {
-
-            if length_remaining <= DECRYPT_BUF_SIZE {
-                self.consume_data_chunk(reader, length_remaining as usize)?;
-                length_remaining = 0;
-            } else {
-                self.consume_data_chunk(reader, DECRYPT_BUF_SIZE as usize)?;
-                length_remaining = length_remaining - DECRYPT_BUF_SIZE;
-            }
-        }
-
-        self.output.flush()?;
-
-        Ok(())
-    }
-
-    fn consume_data_chunk(&mut self, reader: &mut Read, length_bytes: usize)
-        -> io::Result<()> {
-
-        let mut buf = vec![0; length_bytes];
-        reader.read_exact(buf.as_mut_slice())?;
-        self.write_decrypted(buf.as_slice())?;
-        Ok(())
-    }
-
-    fn write_decrypted(&mut self, buf: &[u8]) -> io::Result<usize> {
-
-        let plaintext_len = STREAM_BUF_SIZE as usize;
-        let mut plaintext = vec![0; plaintext_len];
-        let mut tag: u8 = 0;
-
-        let result;
-        unsafe {
-            result = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_pull(
-                &mut self.state,
-                plaintext.as_mut_ptr(),
-                ptr::null_mut(),
-                &mut tag,
-                buf.as_ptr(),
-                buf.len() as u64,
-                ptr::null(),
-                0
-            );
-        }
+    unsafe {
+        let result = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_init_pull(
+            &mut state,
+            header.as_mut_ptr(),
+            key.as_ptr()
+        );
 
         if result != 0 {
-            return Err(
-                io::Error::new(ErrorKind::Other, "libsodium decryption failed")
-            );
+            bail!("unable to initialize decryption");
         }
-
-        self.output.write(plaintext.as_slice())
     }
+
+    Ok(state)
+}
+
+fn decrypt_chunk(state: &mut rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state,
+    buf: &[u8]) -> Result<Vec<u8>, failure::Error> {
+
+    if buf.len() < A_SIZE {
+        bail!("buffer size must be at least {} bytes", A_SIZE);
+    }
+
+    let plaintext_len = buf.len() - A_SIZE;
+    let mut plaintext = vec![0; plaintext_len];
+    let mut tag: u8 = 0;
+
+    let result;
+    unsafe {
+        result = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_pull(
+            state,
+            plaintext.as_mut_ptr(),
+            ptr::null_mut(),
+            &mut tag,
+            buf.as_ptr(),
+            buf.len() as u64,
+            ptr::null(),
+            0
+        );
+    }
+
+    if result != 0 {
+        bail!("libsodium decryption failed");
+    }
+
+    Ok(plaintext)
 }
