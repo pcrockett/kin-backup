@@ -1,5 +1,5 @@
 pub use self::masterkey::{ EncryptedMasterKey, MasterKey };
-pub use self::streams::{ EncryptingWriter, DecryptingWriter };
+pub use self::streams::{ encrypt, DecryptingWriter };
 
 mod masterkey;
 mod passphrase;

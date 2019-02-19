@@ -1,15 +1,11 @@
 use super::masterkey::{ MasterKey, MASTER_KEY_SIZE };
+use failure::{ bail };
 use std::io;
 use std::io::{ Read, Write, ErrorKind };
 use std::ptr;
 
 // stream encryption docs:
 // https://download.libsodium.org/doc/secret-key_cryptography/secretstream
-
-pub struct EncryptingWriter<'a> {
-    output: &'a mut Write,
-    state: rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state
-}
 
 pub struct DecryptingWriter<'a> {
     output: &'a mut Write,
@@ -21,98 +17,104 @@ const STREAM_HEADER_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20
 const STREAM_BUF_SIZE: u64 = 16384; // 16 KiB
 const A_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_ABYTES as usize;
 
-impl<'a> EncryptingWriter<'a> {
+pub fn encrypt(key: &MasterKey, input: &mut Read, output: &mut Write) -> Result<(), failure::Error> {
 
-    pub fn new(key: &'a MasterKey, output: &'a mut Write) -> Result<EncryptingWriter<'a>, failure::Error> {
+    let mut state = init_encrypt(&key, output)?;
+    let mut buffer: [u8; STREAM_BUF_SIZE as usize] = [0; STREAM_BUF_SIZE as usize];
 
-        let mut header: [u8; STREAM_HEADER_SIZE] = [0; STREAM_HEADER_SIZE];
-        let mut state = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state {
-            _pad: [0; 8],
-            k: [0; MASTER_KEY_SIZE],
-            nonce: [0; 12]
-        };
+    loop {
 
-        unsafe {
-            rust_sodium_sys::crypto_secretstream_xchacha20poly1305_init_push(
-                &mut state,
-                header.as_mut_ptr(),
-                key.as_ptr()
-            );
+        let read_count = read_chunk(&mut buffer, input)?;
+        let is_final = read_count < STREAM_BUF_SIZE as usize;
+
+        if is_final {
+            let encrypted = encrypt_chunk(&mut state, &buffer[0..read_count], is_final)?;
+            output.write(&encrypted)?;
+            output.flush()?;
+            break;
+        } else {
+            let encrypted = encrypt_chunk(&mut state, &buffer, is_final)?;
+            output.write(&encrypted)?;
         }
 
-        output.write(&header)?;
-
-        let writer = EncryptingWriter {
-            output: output,
-            state: state
-        };
-
-        Ok(writer)
     }
 
-    pub fn consume(&mut self, reader: &mut Read, total_length: u64) -> io::Result<()> {
+    Ok(())
+}
 
-        let mut length_remaining = total_length;
+fn init_encrypt(key: &MasterKey, output: &mut Write) -> Result<rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state, failure::Error> {
 
-        while length_remaining > 0 {
+    let mut header: [u8; STREAM_HEADER_SIZE] = [0; STREAM_HEADER_SIZE];
+    let mut state = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state {
+        _pad: [0; 8],
+        k: [0; MASTER_KEY_SIZE],
+        nonce: [0; 12]
+    };
 
-            if length_remaining <= STREAM_BUF_SIZE {
-                self.consume_data_chunk(reader, length_remaining as usize, true)?;
-                length_remaining = 0;
-            } else {
-                self.consume_data_chunk(reader, STREAM_BUF_SIZE as usize, false)?;
-                length_remaining = length_remaining - STREAM_BUF_SIZE;
-            }
+    unsafe {
+        rust_sodium_sys::crypto_secretstream_xchacha20poly1305_init_push(
+            &mut state,
+            header.as_mut_ptr(),
+            key.as_ptr()
+        );
+    }
+
+    output.write(&header)?;
+
+    Ok(state)
+}
+
+fn read_chunk(buffer: &mut [u8; STREAM_BUF_SIZE as usize], reader: &mut Read) -> Result<usize, std::io::Error> {
+
+    let iterator = reader.bytes();
+    let mut byte_count = 0;
+    for byte in iterator {
+        match byte {
+            Ok(b) => buffer[byte_count] = b,
+            Err(e) => return Err(e)
         }
 
-        self.output.flush()?;
-
-        Ok(())
+        byte_count = byte_count + 1;
+        if byte_count >= STREAM_BUF_SIZE as usize {
+            break;
+        }
     }
 
-    fn write_encrypted(&mut self, buf: &[u8], is_final: bool) -> io::Result<usize> {
+    Ok(byte_count)
+}
 
-        let ciphertext_len = buf.len() + A_SIZE;
-        let mut ciphertext = vec![0; ciphertext_len];
+fn encrypt_chunk(state: &mut rust_sodium_sys::crypto_secretstream_xchacha20poly1305_state,
+    buf: &[u8], is_final: bool) -> Result<Vec<u8>, failure::Error> {
 
-        unsafe {
+    let ciphertext_len = buf.len() + A_SIZE;
+    let mut ciphertext = vec![0; ciphertext_len];
 
-            let tag: u8;
-            if is_final {
-                tag = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_tag_final();
-            } else {
-                tag = 0;
-            }
+    unsafe {
 
-            let result = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_push(
-                &mut self.state,
-                ciphertext.as_mut_ptr(),
-                ptr::null_mut(),
-                buf.as_ptr(),
-                buf.len() as u64,
-                ptr::null(),
-                0,
-                tag
-            );
-
-            if result != 0 {
-                return Err(
-                    io::Error::new(ErrorKind::Other, "libsodium encryption failed")
-                );
-            }
+        let tag: u8;
+        if is_final {
+            tag = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_tag_final();
+        } else {
+            tag = 0;
         }
 
-        self.output.write(ciphertext.as_slice())
+        let result = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_push(
+            state,
+            ciphertext.as_mut_ptr(),
+            ptr::null_mut(),
+            buf.as_ptr(),
+            buf.len() as u64,
+            ptr::null(),
+            0,
+            tag
+        );
+
+        if result != 0 {
+            bail!("libsodium encryption failed");
+        }
     }
 
-    fn consume_data_chunk(&mut self, reader: &mut Read, length_bytes: usize, is_final: bool)
-        -> io::Result<()> {
-
-        let mut buf = vec![0; length_bytes];
-        reader.read_exact(buf.as_mut_slice())?;
-        self.write_encrypted(buf.as_slice(), is_final)?;
-        Ok(())
-    }
+    Ok(ciphertext)
 }
 
 impl<'a> DecryptingWriter<'a> {

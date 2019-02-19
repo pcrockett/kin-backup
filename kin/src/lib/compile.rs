@@ -3,7 +3,8 @@ use super::cmdline::CompileArgs;
 use super::kinproject::KinProject;
 use super::kinsettings::{ KinSettings };
 use super::kinzip::KinZipWriter;
-use super::libsodium::{ EncryptingWriter, EncryptedMasterKey };
+use super::libsodium;
+use super::libsodium::{ EncryptedMasterKey };
 use super::templating;
 use super::templating::{ PeerModel, ReadmeModel };
 use log::{ info };
@@ -70,10 +71,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
 
     {
         let mut reader = File::open(&src_project.temp_file())?;
-        let mut writer = EncryptingWriter::new(&encryption_key, &mut dest_file)?;
-
-        let temp_archive_size = src_project.temp_file().metadata()?.len();
-        writer.consume(&mut reader, temp_archive_size)?;
+        libsodium::encrypt(&encryption_key, &mut reader, &mut dest_file)?;
     }
 
     fs::remove_file(src_project.temp_file())?;
