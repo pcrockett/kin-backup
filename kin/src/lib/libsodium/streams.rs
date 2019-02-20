@@ -7,26 +7,27 @@ use std::ptr;
 // https://download.libsodium.org/doc/secret-key_cryptography/secretstream
 
 const STREAM_HEADER_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_HEADERBYTES as usize;
-const STREAM_BUF_SIZE: u64 = 16384; // 16 KiB
 const A_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_ABYTES as usize;
+const PLAINTEXT_BUF_SIZE: usize = 16384; // 16 KiB
+const CIPHERTEXT_BUF_SIZE: usize = PLAINTEXT_BUF_SIZE + A_SIZE;
 
 pub fn encrypt(key: &MasterKey, input: &mut Read, output: &mut Write) -> Result<(), failure::Error> {
 
     let mut state = init_encrypt(&key, output)?;
-    let mut buffer: [u8; STREAM_BUF_SIZE as usize] = [0; STREAM_BUF_SIZE as usize];
+    let mut plaintext: [u8; PLAINTEXT_BUF_SIZE] = [0; PLAINTEXT_BUF_SIZE];
 
     loop {
 
-        let read_count = read_chunk(&mut buffer, input)?;
-        let is_final = read_count < STREAM_BUF_SIZE as usize;
+        let read_count = read_chunk(&mut plaintext, input)?;
+        let is_final = read_count < PLAINTEXT_BUF_SIZE;
 
         if is_final {
-            let encrypted = encrypt_chunk(&mut state, &buffer[0..read_count], is_final)?;
+            let encrypted = encrypt_chunk(&mut state, &plaintext[0..read_count], is_final)?;
             output.write(&encrypted)?;
             output.flush()?;
             break;
         } else {
-            let encrypted = encrypt_chunk(&mut state, &buffer, is_final)?;
+            let encrypted = encrypt_chunk(&mut state, &plaintext, is_final)?;
             output.write(&encrypted)?;
         }
 
@@ -38,25 +39,23 @@ pub fn encrypt(key: &MasterKey, input: &mut Read, output: &mut Write) -> Result<
 pub fn decrypt(key: &MasterKey, input: &mut Read, output: &mut Write) -> Result<(), failure::Error> {
 
     let mut state = init_decrypt(&key, input)?;
-
-    const DECRYPT_BUF_SIZE: usize = STREAM_BUF_SIZE as usize + A_SIZE;
-    let mut buffer: [u8; DECRYPT_BUF_SIZE] = [0; DECRYPT_BUF_SIZE];
+    let mut ciphertext: [u8; CIPHERTEXT_BUF_SIZE] = [0; CIPHERTEXT_BUF_SIZE];
 
     loop {
-        let read_count = read_chunk(&mut buffer, input)?;
+        let read_count = read_chunk(&mut ciphertext, input)?;
 
         if read_count == 0 {
             break; // No more data to decrypt
         }
 
-        let is_final = read_count < DECRYPT_BUF_SIZE;
+        let is_final = read_count < CIPHERTEXT_BUF_SIZE;
         if is_final {
-            let plaintext = decrypt_chunk(&mut state, &buffer[0..read_count])?;
+            let plaintext = decrypt_chunk(&mut state, &ciphertext[0..read_count])?;
             output.write(&plaintext)?;
             output.flush()?;
             break;
         } else {
-            let plaintext = decrypt_chunk(&mut state, &buffer)?;
+            let plaintext = decrypt_chunk(&mut state, &ciphertext)?;
             output.write(&plaintext)?;
         }
 
