@@ -1,36 +1,33 @@
-use log::{ info };
+use failure::{ bail };
 use std::fs;
-use std::io;
 use std::path::Path;
 
-pub fn ensure_empty_dir(path: &Path) -> io::Result<()> {
+pub fn ensure_empty_dir(path: &Path) -> Result<(), failure::Error> {
 
     if !path.exists() {
-        fs::create_dir(path)?;
-        info!("created {}", path.to_str().unwrap());
-        return Ok(());
+        match fs::create_dir(path) {
+            Ok(x) => return Ok(x),
+            Err(e) => bail!("unable to create {}: {}", path.to_str().unwrap(), e)
+        };
     }
 
-    let metadata = fs::metadata(path)?;
+    let metadata = match fs::metadata(path) {
+        Ok(m) => m,
+        Err(e) => bail!("unable to get metadata for {}: {}", path.to_str().unwrap(), e)
+    };
+
     if !metadata.is_dir() {
-        return Err(
-            io::Error::new(
-                io::ErrorKind::AlreadyExists, 
-                format!("{} is not a directory", path.to_str().unwrap())
-            )
-        );
+        bail!("{} is not a directory", path.to_str().unwrap());
     }
 
-    let is_not_empty = fs::read_dir(&path)?.any(|_| true);
+    let is_not_empty = match fs::read_dir(&path) {
+        Ok(mut contents) => contents.any(|_| true),
+        Err(e) => bail!("unable to list contents of {}: {}", path.to_str().unwrap(), e)
+    };
+
     if is_not_empty {
-        return Err(
-            io::Error::new(
-                io::ErrorKind::Other,
-                format!("{} is not empty", path.to_str().unwrap())
-            )
-        );
+        bail!("{} is not empty", path.to_str().unwrap());
     }
 
-    info!("directory {} already exists and is empty", path.to_str().unwrap());
     Ok(())
 }

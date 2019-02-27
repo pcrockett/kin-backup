@@ -7,6 +7,7 @@ use super::libsodium;
 use super::libsodium::{ EncryptedMasterKey };
 use super::templating;
 use super::templating::{ PeerModel, ReadmeModel };
+use failure::{ bail };
 use log::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
@@ -21,9 +22,17 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
     };
 
     let recip_name = &args.recipient;
-    let settings = project.settings()?;
+    let settings = match project.settings() {
+        Ok(settings) => settings,
+        Err(e) => bail!("unable to read settings: {}", e)
+    };
+
     let peers = settings.get_peers(recip_name)?;
-    let master_key = settings.master_key()?;
+    let master_key = match settings.master_key() {
+        Ok(key) => key,
+        Err(e) => bail!("invalid master key: {}", e)
+    };
+
     let encrypted_keys: Vec<EncryptedMasterKey> = peers.iter()
         .map(|x| master_key.encrypt(&x.passphrase).unwrap())
         .collect();
