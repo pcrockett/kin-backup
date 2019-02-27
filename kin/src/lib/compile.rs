@@ -52,7 +52,7 @@ fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Re
     let dest_archive_path = dest_package.public_archive_path();
     let mut dest_archive = KinZipWriter::new(&dest_archive_path)?;
 
-    zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::from("/"))?;
+    zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::new())?;
 
     dest_archive.finish()?;
 
@@ -66,7 +66,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
     }
 
     let mut temp_archive = KinZipWriter::new(&src_project.temp_file())?;
-    zip_dir(&src_project.private_dir(), &mut temp_archive, &PathBuf::from("/"))?;
+    zip_dir(&src_project.private_dir(), &mut temp_archive, &PathBuf::new())?;
     temp_archive.finish()?;
 
     let config = src_project.settings()?;
