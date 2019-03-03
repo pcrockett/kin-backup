@@ -38,7 +38,7 @@ impl KinZipWriter {
         let mut amount_read = file.read(&mut buf)?;
 
         while amount_read > 0 {
-            self.internal.write(&buf[0..amount_read])?;
+            self.internal.write_all(&buf[0..amount_read])?;
             amount_read = file.read(&mut buf)?;
         }
 
