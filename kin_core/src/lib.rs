@@ -1,3 +1,5 @@
+#[macro_use] extern crate serde_derive;
+
 pub use self::cmdline::{ CliResult, SubCommand, DecryptArgs };
 pub use self::cmdline::parse as parse_cmdline;
 pub use self::libsodium::init as libsodium_init;

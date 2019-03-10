@@ -1,5 +1,4 @@
-mod lib;
-#[macro_use] extern crate serde_derive;
+use kin_core as lib;
 
 fn main() -> lib::CliResult {
 
