@@ -4,6 +4,7 @@ fn main() -> lib::CliResult {
 
     lib::libsodium_init()?;
 
+    // TODO: Kill this and replace with new stand-alone decrypt executable
     if std::env::args().len() <= 1 {
         // Not run with any args; the first arg in the array is just the
         // executable path

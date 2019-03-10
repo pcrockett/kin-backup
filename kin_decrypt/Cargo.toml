@@ -1,0 +1,12 @@
+[package]
+name = "kin_decrypt"
+version = "0.1.0"
+authors = ["Philip Crockett <contact@philcrockett.com>"]
+edition = "2018"
+
+[dependencies]
+kin_core = { path = "../kin_core" }
+
+[[bin]]
+name = "decrypt"
+path = "src/main.rs"
