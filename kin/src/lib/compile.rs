@@ -94,9 +94,14 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf
 
     for item in contents {
         let item = item?;
+        let metadata = match item.metadata() {
+            Ok(m) => m,
+            Err(e) => bail!("error reading metadata: {}", e)
+        };
 
-        if item.metadata()?.is_dir() {
+        if metadata.is_dir() {
             let dest_dir = dest_dir.join(item.file_name());
+            dest_archive.add_dir(dest_dir.to_str().unwrap())?;
             zip_dir(&item.path(), dest_archive, &dest_dir)?;
         } else {
             let dest_path = dest_dir.join(item.file_name());
@@ -106,7 +111,7 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf
                 item.path().to_str().unwrap(),
                 dest_path);
 
-            dest_archive.add_file(&item.path(), String::from(dest_path))?;
+            dest_archive.add_file(&item.path(), dest_path)?;
         }
     }
 

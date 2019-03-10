@@ -24,7 +24,12 @@ impl KinZipWriter {
         Ok(writer)
     }
 
-    pub fn add_file(&mut self, src_path: &PathBuf, archive_path: String) -> Result<(), failure::Error> {
+    pub fn add_dir(&mut self, archive_path: &str) -> Result<(), failure::Error> {
+        self.internal.add_directory(archive_path, FileOptions::default())?;
+        Ok(())
+    }
+
+    pub fn add_file(&mut self, src_path: &PathBuf, archive_path: &str) -> Result<(), failure::Error> {
 
         let mut file = OpenOptions::new()
             .read(true)
