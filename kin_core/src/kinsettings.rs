@@ -1,5 +1,6 @@
 use super::libsodium::MasterKey;
 use failure::{ bail };
+use serde::{ Deserialize, Serialize };
 use std::fs::File;
 use std::io::{ BufWriter, Write };
 use std::iter::Iterator;

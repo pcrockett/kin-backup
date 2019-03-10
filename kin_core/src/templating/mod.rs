@@ -1,6 +1,7 @@
 use mustache;
 use mustache::Template;
 use pulldown_cmark::{ Parser, html };
+use serde::{ Serialize };
 use std::fs::{ File };
 use std::io::{ BufReader, BufWriter, Read };
 use std::path::PathBuf;

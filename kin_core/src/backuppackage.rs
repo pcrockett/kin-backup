@@ -1,6 +1,7 @@
 use super::fsutil;
 use super::libsodium::{ EncryptedMasterKey, MasterKey };
 use failure:: { bail };
+use serde::{ Deserialize, Serialize };
 use std::fs::File;
 use std::iter::Iterator;
 use std::io::{ BufWriter, Write };
