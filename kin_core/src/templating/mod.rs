@@ -1,43 +1,14 @@
-use mustache;
+pub use mustache;
 use mustache::Template;
 use pulldown_cmark::{ Parser, html };
 use serde::{ Serialize };
 use std::fs::{ File };
-use std::io::{ BufReader, BufWriter, Read };
+use std::io::{ BufWriter };
 use std::path::PathBuf;
-
-#[derive(Serialize)]
-pub struct ReadmeModel {
-    pub owner: String,
-    pub recipient: String,
-    pub passphrase: String,
-    pub peers: Vec<PeerModel>
-}
-
-#[derive(Serialize)]
-pub struct PeerModel {
-    pub name: String
-}
 
 #[derive(Serialize)]
 struct HtmlModel {
     body: String
-}
-
-pub fn render_readme(md_template_path: &PathBuf, model: &ReadmeModel, dest_path: &PathBuf) -> Result<(), failure::Error> {
-
-    let mut md_template_text = String::new();
-
-    {
-        let md_file = File::open(md_template_path)?;
-        let mut md_file = BufReader::new(md_file);
-        md_file.read_to_string(&mut md_template_text)?;
-    }
-
-    let md_template = mustache::compile_str(md_template_text.as_str())?;
-    let md_content = md_template.render_to_string(model)?;
-
-    render_html(&md_content, &dest_path)
 }
 
 pub fn render_html(markdown_content: &String, dest_path: &PathBuf) -> Result<(), failure::Error> {

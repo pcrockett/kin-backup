@@ -1,14 +1,7 @@
-use kin_core::backuppackage::BackupPackage;
-use kin_core::cmdline::CompileArgs;
-use kin_core::kinproject::KinProject;
-use kin_core::kinsettings::{ KinSettings };
-use kin_core::kinzip::KinZipWriter;
+mod readme;
+use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings, KinZipWriter };
+use kin_core::{ bail, info };
 use kin_core::libsodium;
-use kin_core::libsodium::{ EncryptedMasterKey };
-use kin_core::templating;
-use kin_core::templating::{ PeerModel, ReadmeModel };
-use kin_core::{ Error, bail };
-use kin_core::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
 use std::iter::Iterator;
@@ -130,21 +123,21 @@ fn copy_exe(dest_package: &BackupPackage) -> Result<(), Error> {
 fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String, dest_package: &BackupPackage) -> Result<(), Error> {
 
     let peers = settings.get_peers(&recipient)?.iter()
-        .map(|p| PeerModel {
+        .map(|p| readme::PeerModel {
             name: p.name.clone()
         })
         .collect();
 
     let recipient = settings.get_recipient(&recipient)?;
 
-    let model = ReadmeModel {
+    let model = readme::ReadmeModel {
         owner: settings.owner(),
         recipient: recipient.name.clone(),
         passphrase: recipient.passphrase.clone(),
         peers: peers
     };
 
-    templating::render_readme(&project.template_readme(), &model, &dest_package.readme_path())?;
+    readme::render(&project.template_readme(), &model, &dest_package.readme_path())?;
 
     Ok(())
 }

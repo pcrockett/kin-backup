@@ -1,9 +1,6 @@
-use kin_core::cmdline::InitArgs;
-use kin_core::kinproject::KinProject;
-use kin_core::kinsettings::{ KinSettings, KinRecipient };
+use kin_core::{ Error, InitArgs, KinProject, KinRecipient, KinSettings };
 use kin_core::libsodium;
 use kin_core::ui;
-use kin_core::{ Error };
 use std::fs::File;
 use std::io::{ BufWriter, Write };
 

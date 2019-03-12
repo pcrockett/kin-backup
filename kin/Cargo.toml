@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 kin_core = { path = "../kin_core" }
+serde = { version = "1.0.82", features = ["derive"] }
