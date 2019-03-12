@@ -1,12 +1,13 @@
-use super::cmdline::InitArgs;
-use super::kinproject::KinProject;
-use super::kinsettings::{ KinSettings, KinRecipient };
-use super::libsodium;
-use super::ui;
+use kin_core::cmdline::InitArgs;
+use kin_core::kinproject::KinProject;
+use kin_core::kinsettings::{ KinSettings, KinRecipient };
+use kin_core::libsodium;
+use kin_core::ui;
+use kin_core::{ Error };
 use std::fs::File;
 use std::io::{ BufWriter, Write };
 
-pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
+pub fn run(args: &InitArgs) -> Result<(), Error> {
 
     let project = match &args.directory {
         Some(dir) => KinProject::init(&dir)?,
@@ -34,7 +35,7 @@ pub fn run(args: &InitArgs) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn prompt_owner_name() -> Result<String, failure::Error> {
+fn prompt_owner_name() -> Result<String, Error> {
 
     loop {
         let input = ui::prompt("Enter your name: ")?;

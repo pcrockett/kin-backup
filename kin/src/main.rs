@@ -1,6 +1,7 @@
 use kin_core;
 use kin_core::{ CliResult, SubCommand };
 mod compile;
+mod init;
 
 fn main() -> CliResult {
 
@@ -36,7 +37,7 @@ fn main() -> CliResult {
     let args = kin_core::parse_cmdline();
 
     match args {
-        SubCommand::Init(args) => kin_core::init::run(&args),
+        SubCommand::Init(args) => init::run(&args),
         SubCommand::Compile(args) => compile::run(&args),
         SubCommand::Decrypt(args) => kin_core::decrypt::run(&args)
     }?;

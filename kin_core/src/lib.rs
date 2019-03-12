@@ -6,7 +6,6 @@ pub use failure::{ bail };
 pub use log::{ info };
 
 pub mod decrypt;
-pub mod init;
 pub mod backuppackage;
 pub mod cmdline;
 pub mod fsutil;
