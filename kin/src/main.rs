@@ -1,8 +1,10 @@
-use kin_core as lib;
+use kin_core;
+use kin_core::{ CliResult, SubCommand };
+mod compile;
 
-fn main() -> lib::CliResult {
+fn main() -> CliResult {
 
-    lib::libsodium_init()?;
+    kin_core::libsodium_init()?;
 
     // TODO: Kill this and replace with new stand-alone decrypt executable
     if std::env::args().len() <= 1 {
@@ -20,23 +22,23 @@ fn main() -> lib::CliResult {
             // bothered with pesky command line syntax.... It's ok, we already
             // know what the command line args _should_ be.
 
-            let decrypt_args = lib::DecryptArgs {
+            let decrypt_args = kin_core::DecryptArgs {
                 backup_dir: Some(exe_path.parent().unwrap().to_path_buf()),
                 destination: None // Will prompt the user for a destination
             };
 
-            lib::decrypt::run(&decrypt_args)?;
+            kin_core::decrypt::run(&decrypt_args)?;
 
             return Ok(());
         }
     }
 
-    let args = lib::parse_cmdline();
+    let args = kin_core::parse_cmdline();
 
     match args {
-        lib::SubCommand::Init(args) => lib::init::run(&args),
-        lib::SubCommand::Compile(args) => lib::compile::run(&args),
-        lib::SubCommand::Decrypt(args) => lib::decrypt::run(&args)
+        SubCommand::Init(args) => kin_core::init::run(&args),
+        SubCommand::Compile(args) => compile::run(&args),
+        SubCommand::Decrypt(args) => kin_core::decrypt::run(&args)
     }?;
 
     Ok(())

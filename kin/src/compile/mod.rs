@@ -1,20 +1,20 @@
-use super::backuppackage::BackupPackage;
-use super::cmdline::CompileArgs;
-use super::kinproject::KinProject;
-use super::kinsettings::{ KinSettings };
-use super::kinzip::KinZipWriter;
-use super::libsodium;
-use super::libsodium::{ EncryptedMasterKey };
-use super::templating;
-use super::templating::{ PeerModel, ReadmeModel };
-use failure::{ bail };
-use log::{ info };
+use kin_core::backuppackage::BackupPackage;
+use kin_core::cmdline::CompileArgs;
+use kin_core::kinproject::KinProject;
+use kin_core::kinsettings::{ KinSettings };
+use kin_core::kinzip::KinZipWriter;
+use kin_core::libsodium;
+use kin_core::libsodium::{ EncryptedMasterKey };
+use kin_core::templating;
+use kin_core::templating::{ PeerModel, ReadmeModel };
+use kin_core::{ Error, bail };
+use kin_core::{ info };
 use std::fs;
 use std::fs::{ File, OpenOptions };
 use std::iter::Iterator;
 use std::path::PathBuf;
 
-pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
+pub fn run(args: &CompileArgs) -> Result<(), Error> {
 
     let project = match &args.project_dir {
         Some(dir) => KinProject::from(&dir),
@@ -47,7 +47,7 @@ pub fn run(args: &CompileArgs) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), failure::Error> {
+fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), Error> {
 
     let dest_archive_path = dest_package.public_archive_path();
     let mut dest_archive = KinZipWriter::new(&dest_archive_path)?;
@@ -59,7 +59,7 @@ fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Re
     Ok(())
 }
 
-fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), failure::Error> {
+fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), Error> {
 
     if src_project.temp_file().exists() {
         fs::remove_file(src_project.temp_file())?;
@@ -88,7 +88,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
     Ok(())
 }
 
-fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf) -> Result<(), failure::Error> {
+fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf) -> Result<(), Error> {
 
     let contents = fs::read_dir(source)?;
 
@@ -118,7 +118,7 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf
     Ok(())
 }
 
-fn copy_exe(dest_package: &BackupPackage) -> Result<(), failure::Error> {
+fn copy_exe(dest_package: &BackupPackage) -> Result<(), Error> {
 
     let src = std::env::current_exe()?;
     let dst = dest_package.decrypt_exe_path();
@@ -127,7 +127,7 @@ fn copy_exe(dest_package: &BackupPackage) -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String, dest_package: &BackupPackage) -> Result<(), failure::Error> {
+fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String, dest_package: &BackupPackage) -> Result<(), Error> {
 
     let peers = settings.get_peers(&recipient)?.iter()
         .map(|p| PeerModel {
