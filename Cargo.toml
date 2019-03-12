@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "kin",
+    "kin_core",
+    "kin_decrypt"
+]
