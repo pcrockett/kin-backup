@@ -1,12 +1,11 @@
 use super::fsutil;
 use super::libsodium::{ EncryptedMasterKey, MasterKey };
+use super::Error;
 use failure:: { bail };
 use serde::{ Deserialize, Serialize };
-use std::fs;
 use std::fs::File;
 use std::iter::Iterator;
 use std::io::{ BufWriter, Write };
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 pub struct BackupPackage {
@@ -21,7 +20,7 @@ impl BackupPackage {
         }
     }
 
-    pub fn init(path: &PathBuf, encrypted_keys: Vec<EncryptedMasterKey>) -> Result<BackupPackage, failure::Error> {
+    pub fn init(path: &PathBuf, encrypted_keys: Vec<EncryptedMasterKey>) -> Result<BackupPackage, Error> {
 
         fsutil::ensure_empty_dir(path)?;
         let package = BackupPackage::from(path);
@@ -38,11 +37,7 @@ impl BackupPackage {
         let settings = PackageSettings { encrypted_keys: keys };
         settings.write(&package.config_file_path())?;
 
-        if cfg!(target_os = "linux") {
-            // Set read-only permissions on the config file for user, group, and others.
-            let perms = PermissionsExt::from_mode(0o444);
-            fs::set_permissions(package.config_file_path(), perms)?;
-        }
+        set_readonly(&package.config_file_path())?;
 
         Ok(package)
     }
@@ -77,7 +72,7 @@ impl BackupPackage {
         self.path.join("readme.html")
     }
 
-    pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, failure::Error> {
+    pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, Error> {
 
         let settings = match PackageSettings::read(&self.config_file_path()) {
             Ok(settings) => settings,
@@ -114,7 +109,7 @@ struct EncryptedKey {
 
 impl PackageSettings {
 
-    pub fn write(&self, path: &PathBuf) -> Result<(), failure::Error> {
+    pub fn write(&self, path: &PathBuf) -> Result<(), Error> {
 
         let config_serialized = serde_json::to_string_pretty(self)?;
 
@@ -126,10 +121,27 @@ impl PackageSettings {
         Ok(())
     }
 
-    pub fn read(path: &PathBuf) -> Result<PackageSettings, failure::Error> {
+    pub fn read(path: &PathBuf) -> Result<PackageSettings, Error> {
 
         let file = File::open(path)?;
         let settings = serde_json::from_reader(file)?;
         Ok(settings)
     }
+}
+
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
+
+#[cfg(target_os = "linux")]
+fn set_readonly(path: &PathBuf) -> Result<(), Error> {
+    // Set read-only permissions on the config file for user, group, and others.
+    let perms = PermissionsExt::from_mode(0o444);
+    std::fs::set_permissions(package.config_file_path(), perms)?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn set_readonly(_path: &PathBuf) -> Result<(), Error> {
+    // TODO: Set readonly flag on file
+    Ok(())
 }

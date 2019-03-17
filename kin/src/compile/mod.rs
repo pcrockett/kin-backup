@@ -6,7 +6,6 @@ use std::fs;
 use std::fs::{ File, OpenOptions };
 use std::io::{ Write };
 use std::iter::Iterator;
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 pub fn run(args: &CompileArgs) -> Result<(), Error> {
@@ -52,11 +51,7 @@ fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Re
         dest_archive.finish()?;
     }
 
-    if cfg!(target_os = "linux") {
-        // Set read-only permissions on the archive for user, group, and others.
-        let perms = PermissionsExt::from_mode(0o444);
-        fs::set_permissions(dest_archive_path, perms)?;
-    }
+    set_readonly(&dest_archive_path)?;
 
     Ok(())
 }
@@ -86,11 +81,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
         libsodium::encrypt(&encryption_key, &mut reader, &mut dest_file)?;
     }
 
-    if cfg!(target_os = "linux") {
-        // Set read-only permissions on the encrypted archive for user, group, and others.
-        let perms = PermissionsExt::from_mode(0o444);
-        fs::set_permissions(dest_path, perms)?;
-    }
+    set_readonly(&dest_path)?;
 
     fs::remove_file(src_project.temp_file())?;
 
@@ -144,11 +135,7 @@ fn copy_exe(dest_package: &BackupPackage) -> Result<(), Error> {
         file.write_all(decrypt_bytes)?;
     }
 
-    if cfg!(target_os = "linux") {
-        // Set read and execute permissions on the executable for user, group, and others.
-        let perms = PermissionsExt::from_mode(0o555);
-        fs::set_permissions(dest_package.decrypt_exe_path(), perms)?;
-    }
+    set_readonly_execute(&dest_package.decrypt_exe_path())?;
 
     Ok(())
 }
@@ -171,12 +158,37 @@ fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String,
     };
 
     readme::render(&project.template_readme(), &model, &dest_package.readme_path())?;
-
-    if cfg!(target_os = "linux") {
-        // Set read-only permissions on the readme for user, group, and others.
-        let perms = PermissionsExt::from_mode(0o444);
-        fs::set_permissions(dest_package.readme_path(), perms)?;
-    }
+    set_readonly(&project.template_readme())?;
 
     Ok(())
+}
+
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
+
+#[cfg(target_os = "linux")]
+fn set_readonly(path: &PathBuf) -> Result<(), Error> {
+
+    // Set read-only permissions for user, group, and others.
+    let perms = PermissionsExt::from_mode(0o444);
+    fs::set_permissions(path, perms)?;
+}
+
+#[cfg(target_os = "linux")]
+fn set_readonly_execute(path: &PathBuf) -> Result<(), Error> {
+
+    // Set read-only and execute permissions for user, group, and others.
+    let perms = PermissionsExt::from_mode(0o555);
+    fs::set_permissions(path, perms)?;
+}
+
+#[cfg(target_os = "windows")]
+fn set_readonly(_path: &PathBuf) -> Result<(), Error> {
+    // TODO: Set readonly flag on file
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn set_readonly_execute(path: &PathBuf) -> Result<(), Error> {
+    set_readonly(path) // This doesn't make sense in Windows. Should just be readonly.
 }
