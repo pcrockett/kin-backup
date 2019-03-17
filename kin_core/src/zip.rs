@@ -2,23 +2,23 @@ use std::fs::{ File, OpenOptions };
 use std::io::{ Read, Write };
 use std::path::PathBuf;
 use zip::write::FileOptions;
-use zip::{ CompressionMethod, ZipWriter };
+use zip::{ CompressionMethod, ZipWriter as InternalZipWriter };
 
-pub struct KinZipWriter {
-    internal: ZipWriter<File>
+pub struct ZipWriter {
+    internal: InternalZipWriter<File>
 }
 
-impl KinZipWriter {
+impl ZipWriter {
 
-    pub fn new(archive_path: &PathBuf) -> Result<KinZipWriter, failure::Error> {
+    pub fn new(archive_path: &PathBuf) -> Result<ZipWriter, failure::Error> {
 
         let file = OpenOptions::new()
             .create_new(true)
             .write(true)
             .open(archive_path)?;
 
-        let writer = KinZipWriter {
-            internal: ZipWriter::new(file)
+        let writer = ZipWriter {
+            internal: InternalZipWriter::new(file)
         };
 
         Ok(writer)

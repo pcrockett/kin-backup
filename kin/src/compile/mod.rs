@@ -1,5 +1,5 @@
 mod readme;
-use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings, KinZipWriter };
+use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings, ZipWriter };
 use kin_core::{ bail, info };
 use kin_core::libsodium;
 use std::fs;
@@ -43,7 +43,7 @@ pub fn run(args: &CompileArgs) -> Result<(), Error> {
 fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), Error> {
 
     let dest_archive_path = dest_package.public_archive_path();
-    let mut dest_archive = KinZipWriter::new(&dest_archive_path)?;
+    let mut dest_archive = ZipWriter::new(&dest_archive_path)?;
 
     zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::new())?;
 
@@ -58,7 +58,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
         fs::remove_file(src_project.temp_file())?;
     }
 
-    let mut temp_archive = KinZipWriter::new(&src_project.temp_file())?;
+    let mut temp_archive = ZipWriter::new(&src_project.temp_file())?;
     zip_dir(&src_project.private_dir(), &mut temp_archive, &PathBuf::new())?;
     temp_archive.finish()?;
 
@@ -81,7 +81,11 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
     Ok(())
 }
 
-fn zip_dir(source: &PathBuf, dest_archive: &mut KinZipWriter, dest_dir: &PathBuf) -> Result<(), Error> {
+fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -> Result<(), Error> {
+
+    // TODO: Use walkdir crate instead. We already are... it's a third-party
+    // dependency of one of our direct dependencies.
+    // https://crates.io/crates/walkdir
 
     let contents = fs::read_dir(source)?;
 
