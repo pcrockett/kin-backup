@@ -4,6 +4,7 @@ use kin_core::{ bail, info };
 use kin_core::libsodium;
 use std::fs;
 use std::fs::{ File, OpenOptions };
+use std::io::{ BufWriter, Write };
 use std::iter::Iterator;
 use std::path::PathBuf;
 
@@ -117,9 +118,12 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -
 
 fn copy_exe(dest_package: &BackupPackage) -> Result<(), Error> {
 
-    let src = std::env::current_exe()?;
-    let dst = dest_package.decrypt_exe_path();
-    fs::copy(src, dst)?;
+    let decrypt_bytes = include_bytes!("../../../target/debug/decrypt");
+    let file = File::create(dest_package.decrypt_exe_path())?;
+    let mut file = BufWriter::new(file);
+    file.write_all(decrypt_bytes)?;
+
+    // TODO: Set file's execute bit
 
     Ok(())
 }
