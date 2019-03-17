@@ -2,9 +2,11 @@ use super::fsutil;
 use super::libsodium::{ EncryptedMasterKey, MasterKey };
 use failure:: { bail };
 use serde::{ Deserialize, Serialize };
+use std::fs;
 use std::fs::File;
 use std::iter::Iterator;
 use std::io::{ BufWriter, Write };
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 pub struct BackupPackage {
@@ -35,6 +37,13 @@ impl BackupPackage {
 
         let settings = PackageSettings { encrypted_keys: keys };
         settings.write(&package.config_file_path())?;
+
+        if cfg!(target_os = "linux") {
+            // Set read-only permissions on the config file for user, group, and others.
+            let perms = PermissionsExt::from_mode(0o444);
+            fs::set_permissions(package.config_file_path(), perms)?;
+        }
+
         Ok(package)
     }
 

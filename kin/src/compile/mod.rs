@@ -45,11 +45,18 @@ pub fn run(args: &CompileArgs) -> Result<(), Error> {
 fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), Error> {
 
     let dest_archive_path = dest_package.public_archive_path();
-    let mut dest_archive = ZipWriter::new(&dest_archive_path)?;
 
-    zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::new())?;
+    {
+        let mut dest_archive = ZipWriter::new(&dest_archive_path)?;
+        zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::new())?;
+        dest_archive.finish()?;
+    }
 
-    dest_archive.finish()?;
+    if cfg!(target_os = "linux") {
+        // Set read-only permissions on the archive for user, group, and others.
+        let perms = PermissionsExt::from_mode(0o444);
+        fs::set_permissions(dest_archive_path, perms)?;
+    }
 
     Ok(())
 }
@@ -68,14 +75,21 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
     let encryption_key = config.master_key()?;
 
     let dest_path = dest_package.private_archive_path();
-    let mut dest_file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(dest_path)?;
 
     {
+        let mut dest_file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&dest_path)?;
+
         let mut reader = File::open(&src_project.temp_file())?;
         libsodium::encrypt(&encryption_key, &mut reader, &mut dest_file)?;
+    }
+
+    if cfg!(target_os = "linux") {
+        // Set read-only permissions on the encrypted archive for user, group, and others.
+        let perms = PermissionsExt::from_mode(0o444);
+        fs::set_permissions(dest_path, perms)?;
     }
 
     fs::remove_file(src_project.temp_file())?;
@@ -157,6 +171,12 @@ fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String,
     };
 
     readme::render(&project.template_readme(), &model, &dest_package.readme_path())?;
+
+    if cfg!(target_os = "linux") {
+        // Set read-only permissions on the readme for user, group, and others.
+        let perms = PermissionsExt::from_mode(0o444);
+        fs::set_permissions(dest_package.readme_path(), perms)?;
+    }
 
     Ok(())
 }
