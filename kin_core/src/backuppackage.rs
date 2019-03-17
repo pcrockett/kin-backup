@@ -55,7 +55,13 @@ impl BackupPackage {
     }
 
     pub fn decrypt_exe_path(&self) -> PathBuf {
-        self.path.join("decrypt") // TODO: Support Windows
+        if cfg!(target_os = "linux") {
+            return self.path.join("decrypt");
+        } else if cfg!(target_os = "windows") {
+            return self.path.join("decrypt.exe");
+        } else {
+            panic!("only Linux and Windows are supported at this time.");
+        }
     }
 
     pub fn readme_path(&self) -> PathBuf {

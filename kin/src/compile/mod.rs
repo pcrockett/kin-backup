@@ -4,8 +4,9 @@ use kin_core::{ bail, info };
 use kin_core::libsodium;
 use std::fs;
 use std::fs::{ File, OpenOptions };
-use std::io::{ BufWriter, Write };
+use std::io::{ Write };
 use std::iter::Iterator;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 pub fn run(args: &CompileArgs) -> Result<(), Error> {
@@ -118,12 +119,22 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -
 
 fn copy_exe(dest_package: &BackupPackage) -> Result<(), Error> {
 
+    #[cfg(target_os = "linux")]
     let decrypt_bytes = include_bytes!("../../../target/debug/decrypt");
-    let file = File::create(dest_package.decrypt_exe_path())?;
-    let mut file = BufWriter::new(file);
-    file.write_all(decrypt_bytes)?;
 
-    // TODO: Set file's execute bit
+    #[cfg(target_os = "windows")]
+    let decrypt_bytes = include_bytes!("../../../target/debug/decrypt.exe");
+
+    {
+        let mut file = File::create(dest_package.decrypt_exe_path())?;
+        file.write_all(decrypt_bytes)?;
+    }
+
+    if cfg!(target_os = "linux") {
+        // Set read and execute permissions on the executable for user, group, and others.
+        let perms = PermissionsExt::from_mode(0o555);
+        fs::set_permissions(dest_package.decrypt_exe_path(), perms)?;
+    }
 
     Ok(())
 }
