@@ -172,6 +172,7 @@ fn set_readonly(path: &PathBuf) -> Result<(), Error> {
     // Set read-only permissions for user, group, and others.
     let perms = PermissionsExt::from_mode(0o444);
     fs::set_permissions(path, perms)?;
+    Ok(())
 }
 
 #[cfg(target_os = "linux")]
@@ -180,6 +181,7 @@ fn set_readonly_execute(path: &PathBuf) -> Result<(), Error> {
     // Set read-only and execute permissions for user, group, and others.
     let perms = PermissionsExt::from_mode(0o555);
     fs::set_permissions(path, perms)?;
+    Ok(())
 }
 
 #[cfg(target_os = "windows")]

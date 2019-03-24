@@ -136,7 +136,7 @@ use std::os::unix::fs::PermissionsExt;
 fn set_readonly(path: &PathBuf) -> Result<(), Error> {
     // Set read-only permissions on the config file for user, group, and others.
     let perms = PermissionsExt::from_mode(0o444);
-    std::fs::set_permissions(package.config_file_path(), perms)?;
+    std::fs::set_permissions(path, perms)?;
     Ok(())
 }
 
