@@ -56,8 +56,12 @@ impl KinProject {
         self.config_dir().join("temp")
     }
 
-    pub fn template_readme(&self) -> PathBuf {
-        self.path.join("readme-template.md")
+    pub fn overview_readme_template(&self) -> PathBuf {
+        self.path.join("overview-template.md")
+    }
+
+    pub fn decrypt_readme_template(&self) -> PathBuf {
+        self.path.join("decrypt-template.md")
     }
 
     pub fn settings(&self) -> Result<KinSettings, failure::Error> {

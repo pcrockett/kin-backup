@@ -2,7 +2,7 @@ use kin_core::{ Error, InitArgs, KinProject, KinRecipient, KinSettings };
 use kin_core::libsodium;
 use kin_core::ui;
 use std::fs::File;
-use std::io::{ BufWriter, Write };
+use std::io::{ Write };
 
 pub fn run(args: &InitArgs) -> Result<(), Error> {
 
@@ -24,10 +24,13 @@ pub fn run(args: &InitArgs) -> Result<(), Error> {
     let config = KinSettings::new(&owner, recipients);
     config.write(&project.config_file())?;
 
-    let template_contents = include_bytes!("readme-template.md");
-    let file = File::create(project.template_readme())?;
-    let mut file = BufWriter::new(file);
-    file.write_all(template_contents)?;
+    let overview_contents = include_bytes!("readme_templates/overview.md");
+    let mut file = File::create(project.overview_readme_template())?;
+    file.write_all(overview_contents)?;
+
+    let decrypt_contents = include_bytes!("readme_templates/decrypt.md");
+    let mut file = File::create(project.decrypt_readme_template())?;
+    file.write_all(decrypt_contents)?;
 
     Ok(())
 }
