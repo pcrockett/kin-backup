@@ -54,22 +54,22 @@ impl BackupPackage {
         self.path.join("public.zip")
     }
 
+    /// The private.kin file path
     pub fn private_archive_path(&self) -> PathBuf {
-        self.path.join("private.kin")
+        self.config_dir_path().join("private.kin")
     }
 
-    pub fn decrypt_exe_path(&self) -> PathBuf {
-        if cfg!(target_os = "linux") {
-            return self.path.join("decrypt");
-        } else if cfg!(target_os = "windows") {
-            return self.path.join("decrypt.exe");
-        } else {
-            panic!("only Linux and Windows are supported at this time.");
-        }
+    /// The "private" directory containing all the decryption exes for the various operating systems
+    pub fn decrypt_exe_dir(&self) -> PathBuf {
+        self.path.join("private")
     }
 
-    pub fn readme_path(&self) -> PathBuf {
+    pub fn overview_readme_path(&self) -> PathBuf {
         self.path.join("readme.html")
+    }
+
+    pub fn decrypt_readme_path(&self) -> PathBuf {
+        self.decrypt_exe_dir().join("readme.html")
     }
 
     pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, Error> {

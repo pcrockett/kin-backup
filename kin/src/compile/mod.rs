@@ -1,7 +1,6 @@
 mod readme;
 use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings, ZipWriter };
-use kin_core::{ bail, info };
-use kin_core::libsodium;
+use kin_core::{ bail, info, libsodium, fsutil };
 use std::fs;
 use std::fs::{ File, OpenOptions };
 use std::io::{ Write };
@@ -35,8 +34,8 @@ pub fn run(args: &CompileArgs) -> Result<(), Error> {
 
     copy_public_dir(&project, &dest_package)?;
     copy_private_dir(&project, &dest_package)?;
-    copy_exe(&dest_package)?;
-    copy_readme(&project, &settings, &recip_name, &dest_package)?;
+    copy_decrypt_exes(&dest_package)?;
+    copy_readmes(&project, &settings, &recip_name, &dest_package)?;
 
     Ok(())
 }
@@ -122,25 +121,16 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -
     Ok(())
 }
 
-fn copy_exe(dest_package: &BackupPackage) -> Result<(), Error> {
+fn copy_decrypt_exes(dest_package: &BackupPackage) -> Result<(), Error> {
 
-    #[cfg(target_os = "linux")]
-    let decrypt_bytes = include_bytes!("../../../target/debug/decrypt");
+    fsutil::ensure_empty_dir(&dest_package.decrypt_exe_dir())?;
 
-    #[cfg(target_os = "windows")]
-    let decrypt_bytes = include_bytes!("../../../target/debug/decrypt.exe");
-
-    {
-        let mut file = File::create(dest_package.decrypt_exe_path())?;
-        file.write_all(decrypt_bytes)?;
-    }
-
-    set_readonly_execute(&dest_package.decrypt_exe_path())?;
+    // TODO: Copy decrypt exes
 
     Ok(())
 }
 
-fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String, dest_package: &BackupPackage) -> Result<(), Error> {
+fn copy_readmes(project: &KinProject, settings: &KinSettings, recipient: &String, dest_package: &BackupPackage) -> Result<(), Error> {
 
     let peers = settings.get_peers(&recipient)?.iter()
         .map(|p| readme::PeerModel {
@@ -157,8 +147,11 @@ fn copy_readme(project: &KinProject, settings: &KinSettings, recipient: &String,
         peers: peers
     };
 
-    readme::render(&project.template_readme(), &model, &dest_package.readme_path())?;
-    set_readonly(&project.template_readme())?;
+    readme::render(&project.overview_readme_template(), &model, &dest_package.overview_readme_path())?;
+    set_readonly(&dest_package.overview_readme_path())?;
+
+    readme::render(&project.decrypt_readme_template(), &model, &dest_package.decrypt_readme_path())?;
+    set_readonly(&dest_package.decrypt_readme_path())?;
 
     Ok(())
 }
