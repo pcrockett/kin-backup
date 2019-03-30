@@ -1,8 +1,8 @@
-use failure::{ bail };
+use super::{ Error, bail };
 use std::fs;
 use std::path::Path;
 
-pub fn ensure_empty_dir(path: &Path) -> Result<(), failure::Error> {
+pub fn ensure_empty_dir(path: &Path) -> Result<(), Error> {
 
     if !path.exists() {
         match fs::create_dir(path) {

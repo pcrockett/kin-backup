@@ -11,13 +11,13 @@ pub use failure::{ bail };
 pub use log::{ info };
 
 pub mod decrypt;
+pub mod fsutil;
 pub mod libsodium;
 pub mod templating;
 pub mod ui;
 
 mod backuppackage;
 mod cmdline;
-mod fsutil;
 mod kinproject;
 mod kinsettings;
 mod zip;
