@@ -458,6 +458,7 @@ dependencies = [
  "kin_core 0.1.0",
  "kin_decrypt 0.1.0",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zip 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -475,7 +476,6 @@ dependencies = [
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "zip 0.5.1 (git+https://github.com/mvdnes/zip-rs.git)",
 ]
 
 [[package]]
@@ -1255,8 +1255,8 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "0.5.1"
-source = "git+https://github.com/mvdnes/zip-rs.git#d1a0a7d472420602f9b12f2a915400fb6a6f39d8"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bzip2 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "crc32fast 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1413,4 +1413,4 @@ dependencies = [
 "checksum wincolor 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "561ed901ae465d6185fa7864d63fbd5720d0ef718366c9a4dc83cf6170d7e9ba"
 "checksum xattr 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
 "checksum zip 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "77ce0ceee93c995954a31f77903925a6a8bb094709445238e344f2107910e29e"
-"checksum zip 0.5.1 (git+https://github.com/mvdnes/zip-rs.git)" = "<none>"
+"checksum zip 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c18fc320faf909036e46ac785ea827f72e485304877faf1a3a39538d3714dbc3"

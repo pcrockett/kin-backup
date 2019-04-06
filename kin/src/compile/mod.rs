@@ -1,11 +1,13 @@
 mod readme;
-use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings, ZipWriter };
+mod zip;
+use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings };
 use kin_core::{ bail, info, libsodium, fsutil };
 use std::fs;
 use std::fs::{ File, OpenOptions };
 use std::io::{ Write };
 use std::iter::Iterator;
 use std::path::PathBuf;
+use self::zip::ZipWriter;
 
 pub fn run(args: &CompileArgs) -> Result<(), Error> {
 

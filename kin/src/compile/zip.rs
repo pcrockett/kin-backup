@@ -1,3 +1,4 @@
+use kin_core::Error;
 use std::fs::{ File, OpenOptions };
 use std::io::{ Read, Write };
 use std::path::PathBuf;
@@ -10,7 +11,7 @@ pub struct ZipWriter {
 
 impl ZipWriter {
 
-    pub fn new(archive_path: &PathBuf) -> Result<ZipWriter, failure::Error> {
+    pub fn new(archive_path: &PathBuf) -> Result<ZipWriter, Error> {
 
         let file = OpenOptions::new()
             .create_new(true)
@@ -24,12 +25,12 @@ impl ZipWriter {
         Ok(writer)
     }
 
-    pub fn add_dir(&mut self, archive_path: &str) -> Result<(), failure::Error> {
+    pub fn add_dir(&mut self, archive_path: &str) -> Result<(), Error> {
         self.internal.add_directory(archive_path, FileOptions::default())?;
         Ok(())
     }
 
-    pub fn add_file(&mut self, src_path: &PathBuf, archive_path: &str) -> Result<(), failure::Error> {
+    pub fn add_file(&mut self, src_path: &PathBuf, archive_path: &str) -> Result<(), Error> {
 
         let mut file = OpenOptions::new()
             .read(true)
@@ -50,7 +51,7 @@ impl ZipWriter {
         Ok(())
     }
 
-    pub fn finish(&mut self) -> Result<(), failure::Error> {
+    pub fn finish(&mut self) -> Result<(), Error> {
         self.internal.finish()?;
         Ok(())
     }

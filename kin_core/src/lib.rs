@@ -3,7 +3,6 @@ pub use self::cmdline::{ CliResult, CompileArgs, DecryptArgs, InitArgs, SubComma
 pub use self::cmdline::parse as parse_cmdline;
 pub use self::kinproject::KinProject;
 pub use self::kinsettings::{ KinRecipient, KinSettings };
-pub use self::zip::{ ZipWriter };
 pub use self::libsodium::init as libsodium_init;
 pub use self::libsodium::{ EncryptedMasterKey };
 pub use failure::Error as Error;
@@ -20,4 +19,3 @@ mod backuppackage;
 mod cmdline;
 mod kinproject;
 mod kinsettings;
-mod zip;

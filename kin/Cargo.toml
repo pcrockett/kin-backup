@@ -8,3 +8,4 @@ edition = "2018"
 kin_core = { path = "../kin_core" }
 kin_decrypt = { path = "../kin_decrypt" }
 serde = { version = "1.0.82", features = ["derive"] }
+zip = "0.5.2"
