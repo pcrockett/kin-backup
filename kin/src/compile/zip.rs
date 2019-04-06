@@ -17,11 +17,14 @@ pub fn extract(compressed_data: &Vec<u8>, dest_directory: &PathBuf) -> Result<()
             .write(true)
             .truncate(true)
             .create(true)
-            .open(dest_path)?;
+            .open(&dest_path)?;
 
         std::io::copy(&mut source_file, &mut dest_file)?;
 
-        // TODO: Make files executable (chmod u+x)
+        let mode = source_file.unix_mode();
+        if mode.is_some() {
+            set_mode(&dest_path, mode.unwrap())?;
+        }
     }
 
     Ok(())
@@ -77,4 +80,22 @@ impl ZipWriter {
         self.internal.finish()?;
         Ok(())
     }
+}
+
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
+
+#[cfg(target_os = "linux")]
+fn set_mode(path: &PathBuf, mode: u32) -> Result<(), Error> {
+
+    // Set read-only and execute permissions for user, group, and others.
+    let perms = PermissionsExt::from_mode(0o555);
+    std::fs::set_permissions(path, perms)?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn set_mode(path: &PathBuf, mode: u32) -> Result<(), Error> {
+    // This doesn't make sense in Windows; do nothing.
+    Ok(())
 }
