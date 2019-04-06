@@ -4,7 +4,6 @@ use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProjec
 use kin_core::{ bail, info, libsodium, fsutil };
 use std::fs;
 use std::fs::{ File, OpenOptions };
-use std::io::{ Write };
 use std::iter::Iterator;
 use std::path::PathBuf;
 use self::zip::ZipWriter;
@@ -127,7 +126,8 @@ fn copy_decrypt_exes(dest_package: &BackupPackage) -> Result<(), Error> {
 
     fsutil::ensure_empty_dir(&dest_package.decrypt_exe_dir())?;
 
-    // TODO: Copy decrypt exes
+    let executable_archive_bytes = include_bytes!("decrypt_executables.zip").to_vec();
+    zip::extract(&executable_archive_bytes, &dest_package.decrypt_exe_dir())?;
 
     Ok(())
 }

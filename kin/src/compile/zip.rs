@@ -1,9 +1,31 @@
 use kin_core::Error;
 use std::fs::{ File, OpenOptions };
-use std::io::{ Read, Write };
+use std::io::{ Cursor, Read, Write };
 use std::path::PathBuf;
 use zip::write::FileOptions;
-use zip::{ CompressionMethod, ZipWriter as InternalZipWriter };
+use zip::{ CompressionMethod, ZipArchive, ZipWriter as InternalZipWriter };
+
+pub fn extract(compressed_data: &Vec<u8>, dest_directory: &PathBuf) -> Result<(), Error> {
+
+    let reader = Cursor::new(compressed_data);
+    let mut archive = ZipArchive::new(reader)?;
+    for i in 0..archive.len() {
+
+        let mut source_file = archive.by_index(i)?;
+        let dest_path = dest_directory.join(source_file.name());
+        let mut dest_file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(dest_path)?;
+
+        std::io::copy(&mut source_file, &mut dest_file)?;
+
+        // TODO: Make files executable (chmod u+x)
+    }
+
+    Ok(())
+}
 
 pub struct ZipWriter {
     internal: InternalZipWriter<File>
