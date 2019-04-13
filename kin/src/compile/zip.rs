@@ -8,22 +8,28 @@ use zip::{ CompressionMethod, ZipArchive, ZipWriter as InternalZipWriter };
 pub fn extract(compressed_data: &Vec<u8>, dest_directory: &PathBuf) -> Result<(), Error> {
 
     let reader = Cursor::new(compressed_data);
-    let mut archive = ZipArchive::new(reader)?;
+    let mut archive = ZipArchive::new(reader)
+        .expect("unable to unzip decrypt executable archive");
+
     for i in 0..archive.len() {
 
-        let mut source_file = archive.by_index(i)?;
+        let mut source_file = archive.by_index(i)
+            .expect(&format!("unable to extract file {} from decrypt executable archive", i));
+
         let dest_path = dest_directory.join(source_file.name());
         let mut dest_file = OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
-            .open(&dest_path)?;
+            .open(&dest_path)
+            .expect(&format!("unable to create file {}", dest_path.to_str().unwrap()));
 
         std::io::copy(&mut source_file, &mut dest_file)?;
 
         let mode = source_file.unix_mode();
         if mode.is_some() {
-            set_mode(&dest_path, mode.unwrap())?;
+            set_mode(&dest_path, mode.unwrap())
+                .expect(&format!("unable to set mode on {}", dest_path.to_str().unwrap()));
         }
     }
 
