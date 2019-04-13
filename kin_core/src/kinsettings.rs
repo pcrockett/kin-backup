@@ -1,5 +1,5 @@
 use super::libsodium::MasterKey;
-use failure::{ bail };
+use super::{ bail, Error };
 use serde::{ Deserialize, Serialize };
 use std::fs::File;
 use std::io::{ BufWriter, Write };
@@ -29,7 +29,7 @@ impl KinSettings {
         }
     }
 
-    pub fn write(&self, path: &PathBuf) -> Result<(), failure::Error> {
+    pub fn write(&self, path: &PathBuf) -> Result<(), Error> {
 
         let config_serialized = serde_json::to_string_pretty(self)?;
 
@@ -41,7 +41,7 @@ impl KinSettings {
         Ok(())
     }
 
-    pub fn read(path: &PathBuf) -> Result<KinSettings, failure::Error> {
+    pub fn read(path: &PathBuf) -> Result<KinSettings, Error> {
 
         let file = File::open(path)?;
         let settings = serde_json::from_reader(file)?;
@@ -52,7 +52,7 @@ impl KinSettings {
         self.owner.clone()
     }
 
-    pub fn get_recipient(&self, name: &String) -> Result<&KinRecipient, failure::Error> {
+    pub fn get_recipient(&self, name: &String) -> Result<&KinRecipient, Error> {
 
         let recip: Vec<&KinRecipient> = self.recipients.iter()
             .filter(|x| &x.name == name)
@@ -65,7 +65,7 @@ impl KinSettings {
         Ok(recip[0])
     }
 
-    pub fn get_peers(&self, name: &String) -> Result<Vec<&KinRecipient>, failure::Error> {
+    pub fn get_peers(&self, name: &String) -> Result<Vec<&KinRecipient>, Error> {
 
         let recip = self.get_recipient(name)?; // Makes sure this is a valid recipient
 
@@ -76,7 +76,7 @@ impl KinSettings {
         Ok(others)
     }
 
-    pub fn master_key(&self) -> Result<MasterKey, failure::Error> {
+    pub fn master_key(&self) -> Result<MasterKey, Error> {
         MasterKey::decode_base64(&self.master_key)
     }
 }
