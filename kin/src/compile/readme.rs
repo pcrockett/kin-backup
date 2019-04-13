@@ -3,7 +3,7 @@ use std::fs::{ File };
 use std::path::PathBuf;
 use kin_core::templating;
 use kin_core::templating::mustache;
-use kin_core::{ Error };
+use kin_core::{ bail, Error };
 use serde::{ Serialize };
 
 #[derive(Serialize)]
@@ -24,13 +24,28 @@ pub fn render(md_template_path: &PathBuf, model: &ReadmeModel, dest_path: &PathB
     let mut md_template_text = String::new();
 
     {
-        let md_file = File::open(md_template_path)?;
+        let md_file = match File::open(md_template_path) {
+            Ok(file) => file,
+            Err(e) => bail!("unable to open template file {}: {}", md_template_path.to_str().unwrap(), e)
+        };
+
         let mut md_file = BufReader::new(md_file);
-        md_file.read_to_string(&mut md_template_text)?;
+        let result = md_file.read_to_string(&mut md_template_text);
+
+        if result.is_err() {
+            bail!("unable to read template file {}: {}", md_template_path.to_str().unwrap(), result.err().unwrap());
+        }
     }
 
-    let md_template = mustache::compile_str(md_template_text.as_str())?;
-    let md_content = md_template.render_to_string(model)?;
+    let md_template = match mustache::compile_str(md_template_text.as_str()) {
+        Ok(template) => template,
+        Err(e) => bail!("unable to compile mustache template: {}", e)
+    };
+
+    let md_content = match md_template.render_to_string(model) {
+        Ok(content) => content,
+        Err(e) => bail!("unable to render mustache template: {}", e)
+    };
 
     templating::render_html(&md_content, &dest_path)
 }

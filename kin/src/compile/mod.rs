@@ -140,7 +140,8 @@ fn copy_readmes(project: &KinProject, settings: &KinSettings, recipient: &String
         })
         .collect();
 
-    let recipient = settings.get_recipient(&recipient)?;
+    let recipient = settings.get_recipient(&recipient)
+        .expect("could get peers, but no recipient");
 
     let model = readme::ReadmeModel {
         owner: settings.owner(),
