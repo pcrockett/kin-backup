@@ -28,7 +28,7 @@ pub fn extract(compressed_data: &Vec<u8>, dest_directory: &PathBuf) -> Result<()
 
         let mode = source_file.unix_mode();
         if mode.is_some() {
-            set_mode(&dest_path, mode.unwrap())
+            platform::set_mode(&dest_path, mode.unwrap())
                 .expect(&format!("unable to set mode on {}", dest_path.to_str().unwrap()));
         }
     }
@@ -89,19 +89,27 @@ impl ZipWriter {
 }
 
 #[cfg(target_os = "linux")]
-use std::os::unix::fs::PermissionsExt;
+mod platform {
+    use kin_core::Error;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
 
-#[cfg(target_os = "linux")]
-fn set_mode(path: &PathBuf, mode: u32) -> Result<(), Error> {
+    pub fn set_mode(path: &PathBuf, mode: u32) -> Result<(), Error> {
 
-    // Set read-only and execute permissions for user, group, and others.
-    let perms = PermissionsExt::from_mode(0o555);
-    std::fs::set_permissions(path, perms)?;
-    Ok(())
+        // Set read-only and execute permissions for user, group, and others.
+        let perms = PermissionsExt::from_mode(mode);
+        std::fs::set_permissions(path, perms)?;
+        Ok(())
+    }
 }
 
 #[cfg(target_os = "windows")]
-fn set_mode(path: &PathBuf, mode: u32) -> Result<(), Error> {
-    // This doesn't make sense in Windows; do nothing.
-    Ok(())
+mod platform {
+    use kin_core::Error;
+    use std::path::PathBuf;
+
+    pub fn set_mode(path: &PathBuf, mode: u32) -> Result<(), Error> {
+        // This doesn't make sense in Windows; do nothing.
+        Ok(())
+    }
 }

@@ -51,7 +51,7 @@ fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Re
         dest_archive.finish()?;
     }
 
-    set_readonly(&dest_archive_path)?;
+    platform::set_readonly(&dest_archive_path)?;
 
     Ok(())
 }
@@ -81,7 +81,7 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
         libsodium::encrypt(&encryption_key, &mut reader, &mut dest_file)?;
     }
 
-    set_readonly(&dest_path)?;
+    platform::set_readonly(&dest_path)?;
 
     fs::remove_file(src_project.temp_file())?;
 
@@ -151,42 +151,37 @@ fn copy_readmes(project: &KinProject, settings: &KinSettings, recipient: &String
     };
 
     readme::render(&project.overview_readme_template(), &model, &dest_package.overview_readme_path())?;
-    set_readonly(&dest_package.overview_readme_path())?;
+    platform::set_readonly(&dest_package.overview_readme_path())?;
 
     readme::render(&project.decrypt_readme_template(), &model, &dest_package.decrypt_readme_path())?;
-    set_readonly(&dest_package.decrypt_readme_path())?;
+    platform::set_readonly(&dest_package.decrypt_readme_path())?;
 
     Ok(())
 }
 
 #[cfg(target_os = "linux")]
-use std::os::unix::fs::PermissionsExt;
+mod platform {
+    use std::fs;
+    use kin_core::Error;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
 
-#[cfg(target_os = "linux")]
-fn set_readonly(path: &PathBuf) -> Result<(), Error> {
+    pub fn set_readonly(path: &PathBuf) -> Result<(), Error> {
 
-    // Set read-only permissions for user, group, and others.
-    let perms = PermissionsExt::from_mode(0o444);
-    fs::set_permissions(path, perms)?;
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-fn set_readonly_execute(path: &PathBuf) -> Result<(), Error> {
-
-    // Set read-only and execute permissions for user, group, and others.
-    let perms = PermissionsExt::from_mode(0o555);
-    fs::set_permissions(path, perms)?;
-    Ok(())
+        // Set read-only permissions for user, group, and others.
+        let perms = PermissionsExt::from_mode(0o444);
+        fs::set_permissions(path, perms)?;
+        Ok(())
+    }
 }
 
 #[cfg(target_os = "windows")]
-fn set_readonly(_path: &PathBuf) -> Result<(), Error> {
-    // TODO: Set readonly flag on file
-    Ok(())
-}
+mod platform {
+    use kin_core::Error;
+    use std::path::PathBuf;
 
-#[cfg(target_os = "windows")]
-fn set_readonly_execute(path: &PathBuf) -> Result<(), Error> {
-    set_readonly(path) // This doesn't make sense in Windows. Should just be readonly.
+    pub fn set_readonly(_path: &PathBuf) -> Result<(), Error> {
+        // TODO: Set readonly flag on file
+        Ok(())
+    }
 }
