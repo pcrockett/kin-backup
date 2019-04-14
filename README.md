@@ -26,7 +26,17 @@ Encryption is implemented using the widely-used and trusted [libsodium](https://
 Build Requirements
 ------------------
 
-Kin Backup is created using Rust, so you need a Rust development environment. Since we're using libsodium, to build this project you'll also need a C compiler (`cc`, `clang`, etc) and `libssl-dev` (assuming you're on Ubuntu). For Windows, you'll need to have at least Visual Studio Community edition installed with C/C++ build tools.
+Kin Backup is created using Rust, so you need a Rust development environment.
+
+If your build machine is running Ubuntu, you'll need:
+
+1. A C compiler (`cc`, `clang`, etc.)
+2. The `libssl-dev` package installed on your computer (for compiling libsodium)
+3. The `libgtk-3-dev` package installed on your computer (for nativefiledialog)
+
+If your build machine is running Windows, you'll need to have at least Visual Studio Community edition installed with C/C++ build tools.
+
+For other operating systems, feel free to start a pull request and update this readme!
 
 Getting Started
 ---------------
