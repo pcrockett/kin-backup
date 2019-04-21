@@ -1,5 +1,5 @@
 use failure::{ bail };
-use rust_sodium_sys;
+use libsodium_sys;
 
 // key derivation docs:
 // https://download.libsodium.org/doc/key_derivation
@@ -13,8 +13,8 @@ pub struct PassphraseDerivedKey {
     data: Vec<u8>
 }
 
-const SECRETBOX_KEY_SIZE: usize = rust_sodium_sys::crypto_secretbox_KEYBYTES as usize;
-const SALT_SIZE: usize = rust_sodium_sys::crypto_pwhash_SALTBYTES as usize;
+const SECRETBOX_KEY_SIZE: usize = libsodium_sys::crypto_secretbox_KEYBYTES as usize;
+const SALT_SIZE: usize = libsodium_sys::crypto_pwhash_SALTBYTES as usize;
 
 impl PassphraseSalt {
 
@@ -63,15 +63,15 @@ impl PassphraseDerivedKey {
 
         let result;
         unsafe {
-            result = rust_sodium_sys::crypto_pwhash(
+            result = libsodium_sys::crypto_pwhash(
                 key.as_mut_ptr(),
                 SECRETBOX_KEY_SIZE as u64,
                 c_passphrase.as_ptr(),
                 c_passphrase.as_bytes().len() as u64,
                 salt.as_ptr(),
-                rust_sodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
-                rust_sodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
-                rust_sodium_sys::crypto_pwhash_ALG_ARGON2ID13 as i32
+                libsodium_sys::crypto_pwhash_OPSLIMIT_SENSITIVE as u64,
+                libsodium_sys::crypto_pwhash_MEMLIMIT_SENSITIVE as usize,
+                libsodium_sys::crypto_pwhash_ALG_ARGON2ID13 as i32
             );
         }
 

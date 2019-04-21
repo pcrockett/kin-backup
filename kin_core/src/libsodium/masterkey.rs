@@ -1,6 +1,6 @@
 use super::passphrase::{ PassphraseDerivedKey, PassphraseSalt };
 use failure::{ bail, format_err };
-use rust_sodium_sys;
+use libsodium_sys;
 
 // authenticated encryption docs:
 // https://download.libsodium.org/doc/secret-key_cryptography/authenticated_encryption
@@ -15,10 +15,10 @@ pub struct EncryptedMasterKey {
     nonce: Vec<u8>
 }
 
-pub const MASTER_KEY_SIZE: usize = rust_sodium_sys::crypto_secretstream_xchacha20poly1305_KEYBYTES as usize;
+pub const MASTER_KEY_SIZE: usize = libsodium_sys::crypto_secretstream_xchacha20poly1305_KEYBYTES as usize;
 const ENCRYPTED_MASTER_KEY_SIZE: usize = MASTER_KEY_SIZE + SECRETBOX_MAC_SIZE;
-const SECRETBOX_MAC_SIZE: usize = rust_sodium_sys::crypto_secretbox_MACBYTES as usize;
-const SECRETBOX_NONCE_SIZE: usize = rust_sodium_sys::crypto_secretbox_NONCEBYTES as usize;
+const SECRETBOX_MAC_SIZE: usize = libsodium_sys::crypto_secretbox_MACBYTES as usize;
+const SECRETBOX_NONCE_SIZE: usize = libsodium_sys::crypto_secretbox_NONCEBYTES as usize;
 
 impl MasterKey {
 
@@ -29,7 +29,7 @@ impl MasterKey {
         };
 
         unsafe {
-            rust_sodium_sys::crypto_secretstream_xchacha20poly1305_keygen(key.data.as_mut_ptr());
+            libsodium_sys::crypto_secretstream_xchacha20poly1305_keygen(key.data.as_mut_ptr());
         }
 
         key
@@ -68,7 +68,7 @@ impl MasterKey {
 
         let result;
         unsafe {
-            result = rust_sodium_sys::crypto_secretbox_easy(
+            result = libsodium_sys::crypto_secretbox_easy(
                 cipher_text.as_mut_ptr(),
                 self.data.as_ptr(),
                 MASTER_KEY_SIZE as u64,
@@ -142,7 +142,7 @@ impl EncryptedMasterKey {
 
         let result;
         unsafe {
-            result = rust_sodium_sys::crypto_secretbox_open_easy(
+            result = libsodium_sys::crypto_secretbox_open_easy(
                 plain_text.as_mut_ptr(),
                 self.encrypted_data.as_ptr(),
                 self.encrypted_data.len() as u64,
