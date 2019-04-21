@@ -3,30 +3,27 @@ use super::kinsettings::KinSettings;
 use std::path::PathBuf;
 
 pub struct KinProject {
-    path: PathBuf
+    path: PathBuf,
 }
 
 impl KinProject {
-
     pub fn from(path: &PathBuf) -> KinProject {
-
         KinProject {
-            path: path.to_owned()
+            path: path.to_owned(),
         }
     }
 
     pub fn init(path: &PathBuf) -> Result<KinProject, failure::Error> {
-
         fsutil::ensure_empty_dir(path)?;
 
         let project = KinProject {
-            path: path.to_owned()
+            path: path.to_owned(),
         };
 
         let subdirs = [
             project.public_dir(),
             project.private_dir(),
-            project.config_dir()
+            project.config_dir(),
         ];
 
         for subdir in subdirs.iter() {

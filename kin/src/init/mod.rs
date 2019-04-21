@@ -1,25 +1,28 @@
-use kin_core::{ Error, InitArgs, KinProject, KinRecipient, KinSettings };
 use kin_core::libsodium;
 use kin_core::ui;
+use kin_core::{Error, InitArgs, KinProject, KinRecipient, KinSettings};
 use std::fs::File;
-use std::io::{ Write };
+use std::io::Write;
 
 pub fn run(args: &InitArgs) -> Result<(), Error> {
-
     let project = match &args.directory {
         Some(dir) => KinProject::init(&dir)?,
-        None => KinProject::init(&std::env::current_dir()?)?
+        None => KinProject::init(&std::env::current_dir()?)?,
     };
 
     let owner = match &args.owner {
         Some(name) => name.clone(),
-        None => prompt_owner_name()?
+        None => prompt_owner_name()?,
     };
 
-    let recipients: Vec<KinRecipient> = args.recipients.iter().map(|r| KinRecipient {
-        name: r.to_owned(),
-        passphrase: random_passphrase()
-    }).collect();
+    let recipients: Vec<KinRecipient> = args
+        .recipients
+        .iter()
+        .map(|r| KinRecipient {
+            name: r.to_owned(),
+            passphrase: random_passphrase(),
+        })
+        .collect();
 
     let config = KinSettings::new(&owner, recipients);
     config.write(&project.config_file())?;
@@ -36,7 +39,6 @@ pub fn run(args: &InitArgs) -> Result<(), Error> {
 }
 
 fn prompt_owner_name() -> Result<String, Error> {
-
     loop {
         let input = ui::prompt("Enter your name: ")?;
         if input.len() == 0 {
@@ -53,9 +55,9 @@ fn random_passphrase() -> String {
 }
 
 fn random_passphrase_from(word_list: Vec<&str>) -> String {
-
     let mut passphrase = String::new();
-    (0..10).map(|_| random_int() as usize)
+    (0..10)
+        .map(|_| random_int() as usize)
         .map(|r| r % word_list.len())
         .map(|i| word_list[i])
         .for_each(|word| {
@@ -71,26 +73,21 @@ fn random_passphrase_from(word_list: Vec<&str>) -> String {
 }
 
 fn random_int() -> u32 {
-
     let buffer: &mut [u8; std::mem::size_of::<u32>()] = &mut [0; std::mem::size_of::<u32>()];
     libsodium::randombytes_into(buffer);
 
     let buffer = *buffer; // Get immutable array
 
-    unsafe {
-        std::mem::transmute::<[u8; 4], u32>(buffer)
-    }
+    unsafe { std::mem::transmute::<[u8; 4], u32>(buffer) }
 }
 
 fn get_words() -> Vec<&'static str> {
-
     // Got this word list from:
     // https://www.eff.org/deeplinks/2016/07/new-wordlists-random-passphrases
 
     let raw_file = include_str!("eff_large_wordlist.txt");
 
-    raw_file.split_whitespace()
-        .collect()
+    raw_file.split_whitespace().collect()
 }
 
 #[cfg(test)]
@@ -108,7 +105,7 @@ mod tests {
 
     #[test]
     fn random_passphrase_single_word() {
-        let words = vec!("foo");
+        let words = vec!["foo"];
         let passphrase = super::random_passphrase_from(words);
 
         assert_eq!(passphrase, "foo foo foo foo foo foo foo foo foo foo");

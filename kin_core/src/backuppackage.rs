@@ -1,40 +1,44 @@
 use super::fsutil;
-use super::libsodium::{ EncryptedMasterKey, MasterKey };
+use super::libsodium::{EncryptedMasterKey, MasterKey};
 use super::Error;
-use failure:: { bail };
-use serde::{ Deserialize, Serialize };
+use failure::bail;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::iter::Iterator;
-use std::io::{ BufWriter, Write };
 use std::path::PathBuf;
 
 pub struct BackupPackage {
-    path: PathBuf
+    path: PathBuf,
 }
 
 impl BackupPackage {
-
     pub fn from(path: &PathBuf) -> BackupPackage {
         BackupPackage {
-            path: path.to_owned()
+            path: path.to_owned(),
         }
     }
 
-    pub fn init(path: &PathBuf, encrypted_keys: Vec<EncryptedMasterKey>) -> Result<BackupPackage, Error> {
-
+    pub fn init(
+        path: &PathBuf,
+        encrypted_keys: Vec<EncryptedMasterKey>,
+    ) -> Result<BackupPackage, Error> {
         fsutil::ensure_empty_dir(path)?;
         let package = BackupPackage::from(path);
         fsutil::ensure_empty_dir(&package.config_dir_path())?;
 
-        let keys = encrypted_keys.iter()
+        let keys = encrypted_keys
+            .iter()
             .map(|x| EncryptedKey {
                 data: x.data(),
                 passphrase_salt: x.passphrase_salt(),
-                nonce: x.nonce()
+                nonce: x.nonce(),
             })
             .collect();
 
-        let settings = PackageSettings { encrypted_keys: keys };
+        let settings = PackageSettings {
+            encrypted_keys: keys,
+        };
         settings.write(&package.config_file_path())?;
 
         set_readonly(&package.config_file_path())?;
@@ -73,21 +77,25 @@ impl BackupPackage {
     }
 
     pub fn decrypt_master_key(&self, passphrase: &String) -> Result<MasterKey, Error> {
-
         let settings = match PackageSettings::read(&self.config_file_path()) {
             Ok(settings) => settings,
-            Err(err) => bail!("Unable to parse {}: {}", self.config_file_path().to_str().unwrap(), err)
+            Err(err) => bail!(
+                "Unable to parse {}: {}",
+                self.config_file_path().to_str().unwrap(),
+                err
+            ),
         };
 
-        let encrypted_keys: Vec<EncryptedMasterKey> = settings.encrypted_keys.iter()
+        let encrypted_keys: Vec<EncryptedMasterKey> = settings
+            .encrypted_keys
+            .iter()
             .map(|x| EncryptedMasterKey::new(&x.data, &x.passphrase_salt, &x.nonce).unwrap())
             .collect();
 
         for encr_key in encrypted_keys {
-
             match encr_key.decrypt(passphrase) {
                 Ok(key) => return Ok(key),
-                Err(_) => continue // Expected; check the next key in the collection
+                Err(_) => continue, // Expected; check the next key in the collection
             };
         }
 
@@ -97,20 +105,18 @@ impl BackupPackage {
 
 #[derive(Serialize, Deserialize)]
 pub struct PackageSettings {
-    encrypted_keys: Vec<EncryptedKey>
+    encrypted_keys: Vec<EncryptedKey>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct EncryptedKey {
     data: String,
     passphrase_salt: String,
-    nonce: String
+    nonce: String,
 }
 
 impl PackageSettings {
-
     pub fn write(&self, path: &PathBuf) -> Result<(), Error> {
-
         let config_serialized = serde_json::to_string_pretty(self)?;
 
         let file = File::create(path)?;
@@ -122,7 +128,6 @@ impl PackageSettings {
     }
 
     pub fn read(path: &PathBuf) -> Result<PackageSettings, Error> {
-
         let file = File::open(path)?;
         let settings = serde_json::from_reader(file)?;
         Ok(settings)

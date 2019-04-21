@@ -1,20 +1,18 @@
-use structopt::StructOpt;
 pub use quicli::prelude::*;
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(name = "kin", about = "Easy, secure backups for your next of kin")]
 struct CliArgs {
-
     #[structopt(subcommand)]
     pub cmd: SubCommand,
 
     #[structopt(flatten)]
-    verbosity: Verbosity
+    verbosity: Verbosity,
 }
 
 #[derive(StructOpt)]
 pub enum SubCommand {
-
     /// Start a backup project
     #[structopt(name = "init")]
     Init(InitArgs),
@@ -25,7 +23,7 @@ pub enum SubCommand {
 
     /// Decrypt a backup
     #[structopt(name = "decrypt")]
-    Decrypt(DecryptArgs)
+    Decrypt(DecryptArgs),
 }
 
 #[derive(StructOpt)]
@@ -40,7 +38,7 @@ pub struct InitArgs {
 
     /// Specify your name (for readme that gets distributed to backup holders)
     #[structopt(short = "o", long = "owner")]
-    pub owner: Option<String>
+    pub owner: Option<String>,
 }
 
 #[derive(StructOpt)]
@@ -55,24 +53,24 @@ pub struct CompileArgs {
 
     /// The project directory
     #[structopt(short = "p", long = "project-dir", parse(from_os_str))]
-    pub project_dir: Option<std::path::PathBuf>
+    pub project_dir: Option<std::path::PathBuf>,
 }
 
 #[derive(StructOpt)]
 pub struct DecryptArgs {
-
     /// The directory containing the backup data
     #[structopt(short = "b", long = "backup-dir", parse(from_os_str))]
     pub backup_dir: Option<std::path::PathBuf>,
 
     /// The destination decrypted archive path
     #[structopt(short = "d", long = "destination", parse(from_os_str))]
-    pub destination: Option<std::path::PathBuf>
+    pub destination: Option<std::path::PathBuf>,
 }
 
 pub fn parse() -> SubCommand {
     let args = CliArgs::from_args();
-    args.verbosity.setup_env_logger("kin")
+    args.verbosity
+        .setup_env_logger("kin")
         .expect("unable to setup env logger");
 
     args.cmd
@@ -85,12 +83,12 @@ mod tests {
 
     #[test]
     fn init_no_dir() {
-        let args = [ "kin", "init" ].iter();
+        let args = ["kin", "init"].iter();
 
         let parsed = CliArgs::from_iter(args);
         let init_args = match parsed.cmd {
             SubCommand::Init(args) => args,
-            _ => panic!("not an init subcommand")
+            _ => panic!("not an init subcommand"),
         };
 
         assert_eq!(init_args.directory, Option::None)
@@ -98,32 +96,28 @@ mod tests {
 
     #[test]
     fn init_with_dir() {
-
-        let args = [ "kin", "init", "foo/bar" ].iter();
+        let args = ["kin", "init", "foo/bar"].iter();
 
         let parsed = CliArgs::from_iter(args);
         let init_args = match parsed.cmd {
             SubCommand::Init(args) => args,
-            _ => panic!("not an init subcommand")
+            _ => panic!("not an init subcommand"),
         };
 
         match init_args.directory {
             Some(path) => assert_eq!("foo/bar", path.to_str().unwrap()),
-            None => panic!("no directory specified")
+            None => panic!("no directory specified"),
         };
     }
 
     #[test]
     fn init_with_recipients() {
-
-        let args = [
-            "kin", "init", "--recipients", "foo@bar.com", "hi@bye.com"
-        ].iter();
+        let args = ["kin", "init", "--recipients", "foo@bar.com", "hi@bye.com"].iter();
 
         let parsed = CliArgs::from_iter(args);
         let init_args = match parsed.cmd {
             SubCommand::Init(args) => args,
-            _ => panic!("not an init subcommand")
+            _ => panic!("not an init subcommand"),
         };
 
         assert_eq!(init_args.recipients.len(), 2);
@@ -133,15 +127,12 @@ mod tests {
 
     #[test]
     fn init_with_owner() {
-
-        let args = [
-            "kin", "init", "--owner", "chuck"
-        ].iter();
+        let args = ["kin", "init", "--owner", "chuck"].iter();
 
         let parsed = CliArgs::from_iter(args);
         let init_args = match parsed.cmd {
             SubCommand::Init(args) => args,
-            _ => panic!("not an init subcommand")
+            _ => panic!("not an init subcommand"),
         };
 
         assert_eq!(init_args.owner.unwrap(), "chuck");
@@ -149,15 +140,12 @@ mod tests {
 
     #[test]
     fn compile_with_destination() {
-
-        let args = [
-            "kin", "compile", "~/temp", "--recipient", "foo@bar.baz"
-        ].iter();
+        let args = ["kin", "compile", "~/temp", "--recipient", "foo@bar.baz"].iter();
 
         let parsed = CliArgs::from_iter(args);
         let compile_args = match parsed.cmd {
             SubCommand::Compile(args) => args,
-            _ => panic!("not a compile subcommand")
+            _ => panic!("not a compile subcommand"),
         };
 
         let destination = compile_args.dest_dir.to_str().unwrap();
@@ -167,20 +155,25 @@ mod tests {
     #[test]
     fn compile_with_proj_dir() {
         let args = [
-            "kin", "compile", "~/temp",
-            "--recipient", "foo@bar.baz",
-            "--project-dir", "~/foo/bar"
-        ].iter();
+            "kin",
+            "compile",
+            "~/temp",
+            "--recipient",
+            "foo@bar.baz",
+            "--project-dir",
+            "~/foo/bar",
+        ]
+        .iter();
 
         let parsed = CliArgs::from_iter(args);
         let compile_args = match parsed.cmd {
             SubCommand::Compile(args) => args,
-            _ => panic!("not a compile subcommand")
+            _ => panic!("not a compile subcommand"),
         };
 
         let proj_dir = match compile_args.project_dir {
             Some(dir) => dir,
-            _ => panic!("no project dir specified")
+            _ => panic!("no project dir specified"),
         };
 
         assert_eq!(proj_dir.to_str().unwrap(), "~/foo/bar");
@@ -191,14 +184,12 @@ mod tests {
     /// information. This should be the most user-friendly portion of the
     /// software.
     fn decrypt_no_parameters() {
-        let args = [
-            "kin", "decrypt"
-        ].iter();
+        let args = ["kin", "decrypt"].iter();
 
         let parsed = CliArgs::from_iter(args);
         let decrypt_command = match parsed.cmd {
             SubCommand::Decrypt(args) => args,
-            _ => panic!("not a decrypt subcommand")
+            _ => panic!("not a decrypt subcommand"),
         };
 
         assert_eq!(decrypt_command.backup_dir, None);
@@ -208,15 +199,19 @@ mod tests {
     #[test]
     fn decrypt_with_parameters() {
         let args = [
-            "kin", "decrypt",
-            "--backup-dir", "~/foo",
-            "--destination", "~/bar"
-        ].iter();
+            "kin",
+            "decrypt",
+            "--backup-dir",
+            "~/foo",
+            "--destination",
+            "~/bar",
+        ]
+        .iter();
 
         let parsed = CliArgs::from_iter(args);
         let decrypt_command = match parsed.cmd {
             SubCommand::Decrypt(args) => args,
-            _ => panic!("not a decrypt subcommand")
+            _ => panic!("not a decrypt subcommand"),
         };
 
         let backup_dir = decrypt_command.backup_dir.unwrap();

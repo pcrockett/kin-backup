@@ -3,7 +3,6 @@ use std::io::Write;
 use std::iter::Iterator;
 
 pub fn prompt(question: &str) -> Result<String, failure::Error> {
-
     print!("{} ", question);
     io::stdout().flush()?;
 

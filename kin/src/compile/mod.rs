@@ -1,33 +1,33 @@
 mod readme;
 mod zip;
-use kin_core::{ BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings };
-use kin_core::{ bail, info, libsodium, fsutil };
+use self::zip::ZipWriter;
+use kin_core::{bail, fsutil, info, libsodium};
+use kin_core::{BackupPackage, CompileArgs, EncryptedMasterKey, Error, KinProject, KinSettings};
 use std::fs;
-use std::fs::{ File, OpenOptions };
+use std::fs::{File, OpenOptions};
 use std::iter::Iterator;
 use std::path::PathBuf;
-use self::zip::ZipWriter;
 
 pub fn run(args: &CompileArgs) -> Result<(), Error> {
-
     let project = match &args.project_dir {
         Some(dir) => KinProject::from(&dir),
-        None => KinProject::from(&std::env::current_dir()?)
+        None => KinProject::from(&std::env::current_dir()?),
     };
 
     let recip_name = &args.recipient;
     let settings = match project.settings() {
         Ok(settings) => settings,
-        Err(e) => bail!("unable to read settings: {}", e)
+        Err(e) => bail!("unable to read settings: {}", e),
     };
 
     let peers = settings.get_peers(recip_name)?;
     let master_key = match settings.master_key() {
         Ok(key) => key,
-        Err(e) => bail!("invalid master key: {}", e)
+        Err(e) => bail!("invalid master key: {}", e),
     };
 
-    let encrypted_keys: Vec<EncryptedMasterKey> = peers.iter()
+    let encrypted_keys: Vec<EncryptedMasterKey> = peers
+        .iter()
         .map(|x| master_key.encrypt(&x.passphrase).unwrap())
         .collect();
 
@@ -42,12 +42,15 @@ pub fn run(args: &CompileArgs) -> Result<(), Error> {
 }
 
 fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), Error> {
-
     let dest_archive_path = dest_package.public_archive_path();
 
     {
         let mut dest_archive = ZipWriter::new(&dest_archive_path)?;
-        zip_dir(&src_project.public_dir(), &mut dest_archive, &PathBuf::new())?;
+        zip_dir(
+            &src_project.public_dir(),
+            &mut dest_archive,
+            &PathBuf::new(),
+        )?;
         dest_archive.finish()?;
     }
 
@@ -57,13 +60,16 @@ fn copy_public_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Re
 }
 
 fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> Result<(), Error> {
-
     if src_project.temp_file().exists() {
         fs::remove_file(src_project.temp_file())?;
     }
 
     let mut temp_archive = ZipWriter::new(&src_project.temp_file())?;
-    zip_dir(&src_project.private_dir(), &mut temp_archive, &PathBuf::new())?;
+    zip_dir(
+        &src_project.private_dir(),
+        &mut temp_archive,
+        &PathBuf::new(),
+    )?;
     temp_archive.finish()?;
 
     let config = src_project.settings()?;
@@ -88,8 +94,11 @@ fn copy_private_dir(src_project: &KinProject, dest_package: &BackupPackage) -> R
     Ok(())
 }
 
-fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -> Result<(), Error> {
-
+fn zip_dir(
+    source: &PathBuf,
+    dest_archive: &mut ZipWriter,
+    dest_dir: &PathBuf,
+) -> Result<(), Error> {
     // TODO: Use walkdir crate instead. We already are... it's a third-party
     // dependency of one of our direct dependencies.
     // https://crates.io/crates/walkdir
@@ -100,7 +109,7 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -
         let item = item?;
         let metadata = match item.metadata() {
             Ok(m) => m,
-            Err(e) => bail!("error reading metadata: {}", e)
+            Err(e) => bail!("error reading metadata: {}", e),
         };
 
         if metadata.is_dir() {
@@ -111,9 +120,11 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -
             let dest_path = dest_dir.join(item.file_name());
             let dest_path = dest_path.to_str().unwrap();
 
-            info!("zipping {} to {}...",
+            info!(
+                "zipping {} to {}...",
                 item.path().to_str().unwrap(),
-                dest_path);
+                dest_path
+            );
 
             dest_archive.add_file(&item.path(), dest_path)?;
         }
@@ -123,7 +134,6 @@ fn zip_dir(source: &PathBuf, dest_archive: &mut ZipWriter, dest_dir: &PathBuf) -
 }
 
 fn copy_decrypt_exes(dest_package: &BackupPackage) -> Result<(), Error> {
-
     fsutil::ensure_empty_dir(&dest_package.decrypt_exe_dir())?;
 
     let executable_archive_bytes = include_bytes!("decrypt_executables.zip").to_vec();
@@ -132,28 +142,43 @@ fn copy_decrypt_exes(dest_package: &BackupPackage) -> Result<(), Error> {
     Ok(())
 }
 
-fn copy_readmes(project: &KinProject, settings: &KinSettings, recipient: &String, dest_package: &BackupPackage) -> Result<(), Error> {
-
-    let peers = settings.get_peers(&recipient)?.iter()
+fn copy_readmes(
+    project: &KinProject,
+    settings: &KinSettings,
+    recipient: &String,
+    dest_package: &BackupPackage,
+) -> Result<(), Error> {
+    let peers = settings
+        .get_peers(&recipient)?
+        .iter()
         .map(|p| readme::PeerModel {
-            name: p.name.clone()
+            name: p.name.clone(),
         })
         .collect();
 
-    let recipient = settings.get_recipient(&recipient)
+    let recipient = settings
+        .get_recipient(&recipient)
         .expect("could get peers, but no recipient");
 
     let model = readme::ReadmeModel {
         owner: settings.owner(),
         recipient: recipient.name.clone(),
         passphrase: recipient.passphrase.clone(),
-        peers: peers
+        peers: peers,
     };
 
-    readme::render(&project.overview_readme_template(), &model, &dest_package.overview_readme_path())?;
+    readme::render(
+        &project.overview_readme_template(),
+        &model,
+        &dest_package.overview_readme_path(),
+    )?;
     platform::set_readonly(&dest_package.overview_readme_path())?;
 
-    readme::render(&project.decrypt_readme_template(), &model, &dest_package.decrypt_readme_path())?;
+    readme::render(
+        &project.decrypt_readme_template(),
+        &model,
+        &dest_package.decrypt_readme_path(),
+    )?;
     platform::set_readonly(&dest_package.decrypt_readme_path())?;
 
     Ok(())
@@ -161,13 +186,12 @@ fn copy_readmes(project: &KinProject, settings: &KinSettings, recipient: &String
 
 #[cfg(target_os = "linux")]
 mod platform {
-    use std::fs;
     use kin_core::Error;
+    use std::fs;
     use std::os::unix::fs::PermissionsExt;
     use std::path::PathBuf;
 
     pub fn set_readonly(path: &PathBuf) -> Result<(), Error> {
-
         // Set read-only permissions for user, group, and others.
         let perms = PermissionsExt::from_mode(0o444);
         fs::set_permissions(path, perms)?;
