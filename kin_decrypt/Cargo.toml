@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 kin_core = { path = "../kin_core" }
-nfd = "0.0.4"
+nfd = { git = "https://github.com/saurvs/nfd-rs.git" }
 
 [[bin]]
 name = "decrypt"
