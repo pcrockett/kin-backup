@@ -107,7 +107,7 @@ mod platform {
     use kin_core::Error;
     use std::path::PathBuf;
 
-    pub fn set_mode(path: &PathBuf, mode: u32) -> Result<(), Error> {
+    pub fn set_mode(_path: &PathBuf, _mode: u32) -> Result<(), Error> {
         // This doesn't make sense in Windows; do nothing.
         Ok(())
     }
