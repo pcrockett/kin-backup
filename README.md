@@ -1,6 +1,8 @@
 Kin Backup
 ==========
 
+**This was a fun idea, but was inherently flawed due to its offline nature, lack of updateability, lack of periodic backup verification, etc. The idea needs some reworking (assuming it'll ever be worked on again).**
+
 Secure, simple backups for your [next of kin](https://en.wikipedia.org/wiki/Next_of_kin).
 
 This project serves two main goals:
